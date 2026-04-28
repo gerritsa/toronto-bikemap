@@ -1,0 +1,30 @@
+{
+  "name": "@toronto-bike-map/app",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@deck.gl/core": "latest",
+    "@deck.gl/geo-layers": "latest",
+    "@deck.gl/layers": "^9.3.1",
+    "@duckdb/duckdb-wasm": "latest",
+    "@vitejs/plugin-react": "latest",
+    "lucide-react": "^1.11.0",
+    "maplibre-gl": "latest",
+    "pmtiles": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "vite": "latest"
+  },
+  "devDependencies": {
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "typescript": "latest"
+  }
+}

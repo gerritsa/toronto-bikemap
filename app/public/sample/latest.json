@@ -1,0 +1,29 @@
+{
+  "runId": "sample-local",
+  "generatedAt": "2026-04-27T00:00:00Z",
+  "source": {
+    "ckanPackageId": "bike-share-toronto-ridership-data",
+    "ridershipResourceName": "sample",
+    "ridershipUrl": "https://open.toronto.ca/dataset/bike-share-toronto-ridership-data/",
+    "ridershipLastModified": "2026-04-22T22:30:36Z",
+    "ridershipSizeBytes": 0,
+    "dateMin": "2026-01-01",
+    "dateMax": "2026-01-01",
+    "tripCount": 4
+  },
+  "assets": {
+    "tripsBaseUrl": "/sample/trips/2026-01-01.json",
+    "routesUrl": "/sample/routes/routes.json",
+    "stationsUrl": "/sample/stations/stations.json",
+    "basemapUrl": ""
+  },
+  "filters": {
+    "userTypes": ["Member", "Casual"],
+    "bikeModels": ["ICONIC", "EFIT", "ASTRO"],
+    "bikeCategories": {
+      "Classic": ["ICONIC"],
+      "E-bike": ["EFIT", "ASTRO"]
+    }
+  },
+  "dates": ["2026-01-01"]
+}

@@ -1,0 +1,51 @@
+[
+  {
+    "station_id": "7009",
+    "name": "King St E / Jarvis St",
+    "lat": 43.65014,
+    "lon": -79.37253,
+    "capacity": null
+  },
+  {
+    "station_id": "7067",
+    "name": "Yonge St / Lake Shore Blvd E",
+    "lat": 43.6437,
+    "lon": -79.376,
+    "capacity": null
+  },
+  {
+    "station_id": "7083",
+    "name": "Danforth Ave / Barrington Ave",
+    "lat": 43.68837,
+    "lon": -79.30052,
+    "capacity": null
+  },
+  {
+    "station_id": "7194",
+    "name": "Mortimer Ave / Coxwell Ave",
+    "lat": 43.69061,
+    "lon": -79.3261,
+    "capacity": null
+  },
+  {
+    "station_id": "7355",
+    "name": "Beltline Trail / Chaplin Cres",
+    "lat": 43.70449,
+    "lon": -79.42282,
+    "capacity": null
+  },
+  {
+    "station_id": "7443",
+    "name": "Dundas St E / George St",
+    "lat": 43.65757,
+    "lon": -79.37346,
+    "capacity": null
+  },
+  {
+    "station_id": "8146",
+    "name": "George St S / The Esplanade",
+    "lat": 43.64836,
+    "lon": -79.3698,
+    "capacity": null
+  }
+]

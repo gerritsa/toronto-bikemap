@@ -1,0 +1,38 @@
+[
+  {
+    "route_id": "r_7000_7001",
+    "start_station_id": "7000",
+    "end_station_id": "7001",
+    "is_synthetic_loop": false,
+    "encoded_polyline": "}kjiGt_rcNqLuW_SkR",
+    "distance_meters": 720,
+    "duration_seconds_estimate": 240,
+    "routing_engine": "sample",
+    "routing_profile": "bicycle",
+    "route_status": "ok"
+  },
+  {
+    "route_id": "r_7001_7002",
+    "start_station_id": "7001",
+    "end_station_id": "7002",
+    "is_synthetic_loop": false,
+    "encoded_polyline": "omkiGrspcN_Icj@{TcQ",
+    "distance_meters": 930,
+    "duration_seconds_estimate": 310,
+    "routing_engine": "sample",
+    "routing_profile": "bicycle",
+    "route_status": "ok"
+  },
+  {
+    "route_id": "r_loop_7000",
+    "start_station_id": "7000",
+    "end_station_id": "7000",
+    "is_synthetic_loop": true,
+    "encoded_polyline": "}kjiGt_rcNtPp^g^oKpLaR",
+    "distance_meters": 1600,
+    "duration_seconds_estimate": 520,
+    "routing_engine": "sample",
+    "routing_profile": "bicycle",
+    "route_status": "synthetic_loop"
+  }
+]

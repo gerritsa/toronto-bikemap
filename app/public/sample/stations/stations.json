@@ -1,0 +1,26 @@
+[
+  {
+    "station_id": "7000",
+    "name": "Fort York Blvd / Capreol Ct",
+    "lat": 43.639832,
+    "lon": -79.395954,
+    "capacity": 47,
+    "source": "gbfs_current"
+  },
+  {
+    "station_id": "7001",
+    "name": "Wellington St W / Portland St",
+    "lat": 43.6452,
+    "lon": -79.3889,
+    "capacity": 27,
+    "source": "manual_override"
+  },
+  {
+    "station_id": "7002",
+    "name": "St George St / Bloor St W",
+    "lat": 43.6503,
+    "lon": -79.3791,
+    "capacity": 31,
+    "source": "manual_override"
+  }
+]

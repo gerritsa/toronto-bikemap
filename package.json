@@ -1,0 +1,11 @@
+{
+  "name": "toronto-bike-map",
+  "private": true,
+  "packageManager": "pnpm@10.4.1",
+  "scripts": {
+    "dev": "pnpm --filter @toronto-bike-map/app dev",
+    "build": "pnpm --filter @toronto-bike-map/app build",
+    "preview": "pnpm --filter @toronto-bike-map/app preview",
+    "typecheck": "pnpm --filter @toronto-bike-map/app typecheck"
+  }
+}
