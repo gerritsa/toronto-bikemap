@@ -1,7 +1,7 @@
 import { Deck } from "@deck.gl/core";
 import { TripsLayer } from "@deck.gl/geo-layers";
-import { IconLayer } from "@deck.gl/layers";
-import { CalendarDays, Pause, Play, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { IconLayer, PathLayer, ScatterplotLayer } from "@deck.gl/layers";
+import { Bike, CalendarDays, Pause, Play, Search, SlidersHorizontal, X } from "lucide-react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -9,7 +9,7 @@ import { DAY_SECONDS, DEFAULT_FILTERS, DEFAULT_MAX_TRIPS, SPEEDS, TORONTO_VIEW_S
 import { loadManifest, TripDataClient, tripPartitionUrl } from "./dataClient";
 import { syncParkingStationsLayer } from "./mapParkingStations";
 import { createMapStyle, installPmtilesProtocol } from "./mapStyle";
-import type { BikeCategory, BikeModel, FilterState, FlowTrip, ParkingStation, PublishedManifest, UserType } from "./types";
+import type { BikeCategory, FilterState, FlowTrip, ParkingStation, PublishedManifest, UserType } from "./types";
 import "./styles.css";
 
 type LoadState = "idle" | "loading" | "ready" | "empty" | "error";
@@ -18,6 +18,18 @@ type TripMarker = {
   position: [number, number];
   bearing: number;
 };
+type FinishBurst = {
+  id: string;
+  position: [number, number];
+  color: [number, number, number];
+  startedAt: number;
+};
+type FinishPulse = {
+  id: string;
+  position: [number, number];
+  color: [number, number, number, number];
+  radius: number;
+};
 type StationPopup = {
   type: "station";
   lng: number;
@@ -25,13 +37,18 @@ type StationPopup = {
   name: string;
   stationId: string;
 };
-type TripPopup = {
-  type: "trip";
-  lng: number;
-  lat: number;
+type MapPopup = StationPopup;
+type SearchMode = "time" | "ride";
+type RideSearchMatch = {
   trip: FlowTrip;
+  score: number;
 };
-type MapPopup = StationPopup | TripPopup;
+
+const TRIP_TRAIL_LENGTH_SECONDS = 180;
+const FINISH_BURST_MS = 1100;
+const DEFAULT_SELECTED_DATE = "2026-01-01";
+const DEFAULT_START_SECONDS = 0;
+const SELECTED_ROUTE_COLOR: [number, number, number, number] = [232, 190, 118, 220];
 
 const ARROW_ICON_ATLAS =
   `data:image/svg+xml;base64,${btoa(`
@@ -47,13 +64,6 @@ const ARROW_ICON_MAPPING = {
 
 function toggleValue<T extends string>(values: T[], value: T) {
   return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
-}
-
-function formatClock(seconds: number) {
-  const normalized = Math.max(0, Math.min(DAY_SECONDS - 1, seconds));
-  const hours = Math.floor(normalized / 3600);
-  const minutes = Math.floor((normalized % 3600) / 60);
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
 function formatDuration(seconds: number) {
@@ -84,22 +94,27 @@ function formatClockWithSeconds(seconds: number) {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
 }
 
-function formatClockDetailed(seconds: number) {
+function formatClockShort(seconds: number) {
   const normalized = Math.max(0, Math.min(DAY_SECONDS - 1, Math.floor(seconds)));
   const hours24 = Math.floor(normalized / 3600);
   const minutes = Math.floor((normalized % 3600) / 60);
-  const secs = normalized % 60;
   const meridiem = hours24 >= 12 ? "PM" : "AM";
   const hours12 = hours24 % 12 || 12;
-  return {
-    time: `${String(hours12).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`,
-    meridiem
-  };
+  return `${hours12}:${String(minutes).padStart(2, "0")} ${meridiem}`;
+}
+
+function formatClockCompact(seconds: number) {
+  const normalized = Math.max(0, Math.min(DAY_SECONDS - 1, Math.floor(seconds)));
+  const hours24 = Math.floor(normalized / 3600);
+  const minutes = Math.floor((normalized % 3600) / 60);
+  const meridiem = hours24 >= 12 ? "PM" : "AM";
+  const hours12 = hours24 % 12 || 12;
+  return `${hours12}:${String(minutes).padStart(2, "0")}${meridiem.toLowerCase()}`;
 }
 
 function formatDateLabel(dateString: string) {
   if (!dateString) {
-    return "Wed, Jan 1, 2025";
+    return formatDateLabel(DEFAULT_SELECTED_DATE);
   }
 
   const [year, month, day] = dateString.split("-").map(Number);
@@ -113,13 +128,10 @@ function formatDateLabel(dateString: string) {
 }
 
 function tripColor(trip: FlowTrip): [number, number, number] {
-  if (trip.isSameStation) {
-    return [201, 93, 70];
-  }
   if (trip.bikeCategory === "E-bike") {
     return [47, 142, 201];
   }
-  return trip.userType === "Member" ? [14, 124, 102] : [198, 162, 75];
+  return [14, 124, 102];
 }
 
 function distanceMeters(from: [number, number], to: [number, number]) {
@@ -182,16 +194,103 @@ function markerForTrip(trip: FlowTrip, currentTime: number): TripMarker | null {
   return null;
 }
 
-function filterSummary(filters: FilterState) {
-  return [
-    `${filters.userTypes.length} rider ${filters.userTypes.length === 1 ? "type" : "types"}`,
-    `${filters.bikeModels.length} bike ${filters.bikeModels.length === 1 ? "model" : "models"}`,
-    `${filters.bikeCategories.length} ${filters.bikeCategories.length === 1 ? "class" : "classes"}`
-  ].join(" · ");
-}
-
 function formatLoadState(loadState: LoadState) {
   return loadState.charAt(0).toUpperCase() + loadState.slice(1);
+}
+
+function formatBikeLabel(trip: FlowTrip) {
+  return trip.bikeCategory === "E-bike" ? "Electric Bike" : "Classic Bike";
+}
+
+function formatAverageSpeed(trip: FlowTrip) {
+  if (!Number.isFinite(trip.distanceMeters) || !Number.isFinite(trip.durationSeconds) || trip.durationSeconds <= 0) {
+    return "Unknown speed";
+  }
+  const kilometersPerHour = trip.distanceMeters / 1000 / (trip.durationSeconds / 3600);
+  return `${kilometersPerHour.toFixed(1)} km/h`;
+}
+
+function formatTripCode(trip: FlowTrip) {
+  return trip.tripId.slice(-8).toUpperCase();
+}
+
+function normalizeSearchText(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function parseSearchDate(query: string, availableDates: string[]) {
+  const isoDate = query.match(/\b20\d{2}-\d{2}-\d{2}\b/)?.[0];
+  if (isoDate && availableDates.includes(isoDate)) {
+    return isoDate;
+  }
+  return null;
+}
+
+function parseSearchTime(query: string) {
+  const match = query.match(/\b(\d{1,2})(?::(\d{2}))?(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\b/i);
+  if (!match) {
+    return null;
+  }
+
+  let hours = Number(match[1]);
+  const minutes = Number(match[2] ?? 0);
+  const seconds = Number(match[3] ?? 0);
+  const meridiem = match[4]?.toLowerCase().replaceAll(".", "");
+
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes) || !Number.isInteger(seconds) || minutes > 59 || seconds > 59) {
+    return null;
+  }
+  if (meridiem) {
+    if (hours < 1 || hours > 12) {
+      return null;
+    }
+    hours = hours % 12;
+    if (meridiem === "pm") {
+      hours += 12;
+    }
+  } else if (hours > 23) {
+    return null;
+  }
+
+  return hours * 3600 + minutes * 60 + seconds;
+}
+
+function stationSearchTokens(query: string) {
+  const ignored = new Set(["am", "pm", "at", "to", "from", "ride", "trip", "start", "started", "when", "did", "this"]);
+  return normalizeSearchText(query)
+    .split(" ")
+    .filter((token) => token.length > 1 && !ignored.has(token) && !/^\d+$/.test(token));
+}
+
+function tokenHits(tokens: string[], text: string) {
+  const normalized = normalizeSearchText(text);
+  return tokens.reduce((score, token) => score + (normalized.includes(token) ? 1 : 0), 0);
+}
+
+function rideSearchMatches(query: string, trips: FlowTrip[], currentTime: number): RideSearchMatch[] {
+  const tokens = stationSearchTokens(query);
+  const searchedTime = parseSearchTime(query);
+  if (!tokens.length && searchedTime === null) {
+    return [];
+  }
+
+  return trips
+    .map((trip) => {
+      const stationScore = tokenHits(tokens, `${trip.startStationName} ${trip.endStationName}`);
+      const timeDistance = Math.abs((searchedTime ?? currentTime) - trip.startSeconds);
+      const timeScore = searchedTime === null ? 0 : Math.max(0, 4 - timeDistance / 900);
+      return {
+        trip,
+        score: stationScore * 2 + timeScore
+      };
+    })
+    .filter((match) => match.score > 0)
+    .sort((a, b) => b.score - a.score || Math.abs(a.trip.startSeconds - currentTime) - Math.abs(b.trip.startSeconds - currentTime))
+    .slice(0, 6);
 }
 
 function pickedFlowTrip(object: unknown): FlowTrip | null {
@@ -207,6 +306,60 @@ function pickedFlowTrip(object: unknown): FlowTrip | null {
   return null;
 }
 
+function focusTripPath(map: maplibregl.Map, trip: FlowTrip) {
+  if (trip.path.length < 2) {
+    return;
+  }
+
+  const bounds = trip.path.reduce(
+    (tripBounds, coordinate) => tripBounds.extend(coordinate),
+    new maplibregl.LngLatBounds(trip.path[0], trip.path[0])
+  );
+  const width = map.getCanvas().clientWidth;
+  const height = map.getCanvas().clientHeight;
+  const compact = width < 760 || height < 620;
+
+  map.fitBounds(bounds, {
+    duration: 900,
+    maxZoom: 15.4,
+    padding: compact
+      ? { top: 132, right: 36, bottom: 160, left: 36 }
+      : { top: 140, right: 520, bottom: 112, left: 280 }
+  });
+}
+
+function resetMapView(map: maplibregl.Map | null) {
+  map?.easeTo({
+    center: [TORONTO_VIEW_STATE.longitude, TORONTO_VIEW_STATE.latitude],
+    zoom: TORONTO_VIEW_STATE.zoom,
+    pitch: TORONTO_VIEW_STATE.pitch,
+    bearing: TORONTO_VIEW_STATE.bearing,
+    duration: 900
+  });
+}
+
+function createFinishPulses(bursts: FinishBurst[]): FinishPulse[] {
+  const now = performance.now();
+  const pulses: FinishPulse[] = [];
+
+  for (const burst of bursts) {
+    const rawProgress = (now - burst.startedAt) / FINISH_BURST_MS;
+    if (rawProgress < 0 || rawProgress > 1) {
+      continue;
+    }
+
+    const progress = 1 - (1 - rawProgress) ** 2;
+    pulses.push({
+      id: burst.id,
+      position: burst.position,
+      color: [burst.color[0], burst.color[1], burst.color[2], Math.round(120 * (1 - rawProgress))],
+      radius: 3 + 15 * progress
+    });
+  }
+
+  return pulses;
+}
+
 export default function App() {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
@@ -214,24 +367,31 @@ export default function App() {
   const dataClientRef = useRef<TripDataClient | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
   const parkingStationsRef = useRef<ParkingStation[]>([]);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const tripClickHandledRef = useRef(false);
   const stationSelectHandlerRef = useRef<(payload: Omit<StationPopup, "type">) => void>(() => {});
   const stationClearHandlerRef = useRef<() => void>(() => {});
   const animationRef = useRef<number | null>(null);
   const lastFrameRef = useRef<number | null>(null);
+  const previousTimeRef = useRef(DEFAULT_START_SECONDS);
 
   const [manifest, setManifest] = useState<PublishedManifest | null>(null);
-  const [selectedDate, setSelectedDate] = useState("");
+  const [selectedDate, setSelectedDate] = useState(DEFAULT_SELECTED_DATE);
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [trips, setTrips] = useState<FlowTrip[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("idle");
   const [errorMessage, setErrorMessage] = useState("");
-  const [currentTime, setCurrentTime] = useState(8 * 3600);
+  const [currentTime, setCurrentTime] = useState(DEFAULT_START_SECONDS);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState(30);
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [parkingStations, setParkingStations] = useState<ParkingStation[]>([]);
   const [mapPopup, setMapPopup] = useState<MapPopup | null>(null);
+  const [selectedTrip, setSelectedTrip] = useState<FlowTrip | null>(null);
+  const [finishBursts, setFinishBursts] = useState<FinishBurst[]>([]);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchMode, setSearchMode] = useState<SearchMode>("time");
+  const [searchQuery, setSearchQuery] = useState("");
 
   stationSelectHandlerRef.current = (payload) => {
     if (!tripClickHandledRef.current) {
@@ -246,12 +406,15 @@ export default function App() {
   parkingStationsRef.current = parkingStations;
 
   const availableDates = manifest?.dates ?? [];
-  const detailedClock = useMemo(() => formatClockDetailed(currentTime), [currentTime]);
+  const detailedClock = useMemo(() => formatClockWithSeconds(currentTime), [currentTime]);
   const formattedDateLabel = useMemo(() => formatDateLabel(selectedDate), [selectedDate]);
   const timelineClock = useMemo(() => formatClockWithSeconds(currentTime), [currentTime]);
+  const parsedSearchTime = useMemo(() => parseSearchTime(searchQuery), [searchQuery]);
+  const parsedSearchDate = useMemo(() => parseSearchDate(searchQuery, availableDates), [availableDates, searchQuery]);
+  const rideMatches = useMemo(() => rideSearchMatches(searchQuery, trips, currentTime), [currentTime, searchQuery, trips]);
 
   const activeTrips = useMemo(
-    () => trips.filter((trip) => trip.startSeconds <= currentTime && trip.endSeconds >= currentTime - 1800),
+    () => trips.filter((trip) => trip.startSeconds <= currentTime && trip.endSeconds >= currentTime - TRIP_TRAIL_LENGTH_SECONDS),
     [currentTime, trips]
   );
   const currentTripMarkers = useMemo(
@@ -261,6 +424,7 @@ export default function App() {
     }),
     [activeTrips, currentTime]
   );
+  const finishPulses = useMemo(() => createFinishPulses(finishBursts), [currentTime, finishBursts]);
 
   useEffect(() => {
     dataClientRef.current = new TripDataClient();
@@ -379,23 +543,25 @@ export default function App() {
         x: event.point.x,
         y: event.point.y,
         radius: 10,
-        layerIds: ["bike-share-trip-arrows", "bike-share-trips"]
+        layerIds: ["bike-share-trip-arrows", "bike-share-selected-trip", "bike-share-trips"]
       });
       const trip = pickedFlowTrip(pick?.object);
       if (!trip) {
         tripClickHandledRef.current = false;
+        setSelectedTrip((selected) => {
+          if (selected) {
+            resetMapView(map);
+          }
+          return null;
+        });
         setMapPopup(null);
         return;
       }
 
-      const lngLat = map.unproject(event.point);
       tripClickHandledRef.current = true;
-      setMapPopup({
-        type: "trip",
-        lng: lngLat.lng,
-        lat: lngLat.lat,
-        trip
-      });
+      setMapPopup(null);
+      setSelectedTrip(trip);
+      focusTripPath(map, trip);
     };
 
     map.on("click", handleTripClick);
@@ -457,56 +623,10 @@ export default function App() {
     const content = document.createElement("div");
     content.className = "station-popup-inner";
 
-    if (mapPopup.type === "trip") {
-      const eyebrow = document.createElement("div");
-      eyebrow.className = "station-popup-eyebrow";
-      eyebrow.textContent = "Trip details";
-      content.appendChild(eyebrow);
-    }
-
-    if (mapPopup.type === "station") {
-      const title = document.createElement("div");
-      title.className = "station-popup-title";
-      title.textContent = mapPopup.name;
-      content.appendChild(title);
-    }
-
-    if (mapPopup.type === "trip") {
-      const trip = mapPopup.trip;
-      const route = document.createElement("div");
-      route.className = "trip-route";
-
-      const stops = [
-        [formatClock(trip.startSeconds), trip.startStationName],
-        [formatClock(trip.endSeconds), trip.endStationName]
-      ];
-
-      for (const [time, station] of stops) {
-        const row = document.createElement("div");
-        row.className = "trip-route-row";
-
-        const timeNode = document.createElement("span");
-        timeNode.className = "trip-route-time";
-        timeNode.textContent = time;
-
-        const dot = document.createElement("span");
-        dot.className = "trip-route-dot";
-        dot.setAttribute("aria-hidden", "true");
-
-        const stationNode = document.createElement("strong");
-        stationNode.className = "trip-route-station";
-        stationNode.textContent = station;
-
-        row.append(timeNode, dot, stationNode);
-        route.appendChild(row);
-      }
-
-      const meta = document.createElement("div");
-      meta.className = "trip-popup-meta-row";
-      meta.textContent = `${formatDuration(trip.durationSeconds)} · ${formatDistance(trip.distanceMeters)} · ${trip.bikeCategory} · ${trip.userType}`;
-
-      content.append(route, meta);
-    }
+    const title = document.createElement("div");
+    title.className = "station-popup-title";
+    title.textContent = mapPopup.name;
+    content.appendChild(title);
 
     const popup = new maplibregl.Popup({
       closeButton: true,
@@ -542,8 +662,20 @@ export default function App() {
       opacity: 0.35,
       widthMinPixels: 2,
       widthMaxPixels: 5,
-      trailLength: 90,
+      trailLength: TRIP_TRAIL_LENGTH_SECONDS,
       currentTime,
+      capRounded: true,
+      jointRounded: true,
+      pickable: true
+    });
+    const selectedTripLayer = new PathLayer<FlowTrip>({
+      id: "bike-share-selected-trip",
+      data: selectedTrip ? [selectedTrip] : [],
+      getPath: (trip) => trip.path,
+      getColor: () => SELECTED_ROUTE_COLOR,
+      opacity: 0.92,
+      widthMinPixels: 3,
+      widthMaxPixels: 4,
       capRounded: true,
       jointRounded: true,
       pickable: true
@@ -562,9 +694,25 @@ export default function App() {
       billboard: false,
       pickable: true
     });
+    const finishBurstLayer = new ScatterplotLayer<FinishPulse>({
+      id: "bike-share-finish-bursts",
+      data: finishPulses,
+      getPosition: (pulse) => pulse.position,
+      getFillColor: (pulse) => pulse.color,
+      getLineColor: (pulse) => pulse.color,
+      getRadius: (pulse) => pulse.radius,
+      getLineWidth: 1.6,
+      radiusUnits: "pixels",
+      radiusMinPixels: 1,
+      radiusMaxPixels: 20,
+      lineWidthUnits: "pixels",
+      stroked: true,
+      filled: false,
+      pickable: false
+    });
 
-    deckRef.current.setProps({ layers: [layer, arrowLayer] });
-  }, [activeTrips, currentTime, currentTripMarkers]);
+    deckRef.current.setProps({ layers: [layer, selectedTripLayer, arrowLayer, finishBurstLayer] });
+  }, [activeTrips, currentTime, currentTripMarkers, finishPulses, selectedTrip]);
 
   const loadTripsForSelection = useCallback(async () => {
     if (!manifest || !selectedDate || !dataClientRef.current) {
@@ -604,6 +752,61 @@ export default function App() {
   }, [loadTripsForSelection]);
 
   useEffect(() => {
+    setSelectedTrip((trip) => {
+      if (!trip) {
+        return null;
+      }
+      return trips.some((candidate) => candidate.tripId === trip.tripId) ? trip : null;
+    });
+  }, [trips]);
+
+  useEffect(() => {
+    setFinishBursts([]);
+    previousTimeRef.current = currentTime;
+  }, [filters, selectedDate]);
+
+  useEffect(() => {
+    const previousTime = previousTimeRef.current;
+    previousTimeRef.current = currentTime;
+
+    if (!isPlaying || currentTime <= previousTime || currentTime - previousTime > 600) {
+      return;
+    }
+
+    const now = performance.now();
+    const completedTrips = trips
+      .filter((trip) => trip.endSeconds > previousTime && trip.endSeconds <= currentTime && trip.path.length)
+      .slice(0, 80);
+
+    if (!completedTrips.length) {
+      return;
+    }
+
+    setFinishBursts((bursts) => [
+      ...bursts.filter((burst) => now - burst.startedAt < FINISH_BURST_MS),
+      ...completedTrips.map((trip) => ({
+        id: `${trip.tripId}-${now}`,
+        position: trip.path[trip.path.length - 1],
+        color: tripColor(trip),
+        startedAt: now
+      }))
+    ]);
+  }, [currentTime, isPlaying, trips]);
+
+  useEffect(() => {
+    if (!finishBursts.length) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      const now = performance.now();
+      setFinishBursts((bursts) => bursts.filter((burst) => now - burst.startedAt < FINISH_BURST_MS));
+    }, FINISH_BURST_MS);
+
+    return () => window.clearTimeout(timeout);
+  }, [finishBursts]);
+
+  useEffect(() => {
     if (!isPlaying) {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
@@ -634,7 +837,24 @@ export default function App() {
   }, [isPlaying, speed]);
 
   useEffect(() => {
+    if (!isSearchOpen) {
+      return;
+    }
+    window.setTimeout(() => searchInputRef.current?.focus(), 0);
+  }, [isSearchOpen]);
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setIsSearchOpen((value) => !value);
+        return;
+      }
+      if (event.key === "Escape" && isSearchOpen) {
+        event.preventDefault();
+        setIsSearchOpen(false);
+        return;
+      }
       const target = event.target as HTMLElement | null;
       if (target && ["INPUT", "SELECT", "TEXTAREA"].includes(target.tagName)) {
         return;
@@ -649,19 +869,55 @@ export default function App() {
       if (event.key.toLowerCase() === "f") {
         setIsFiltersOpen((value) => !value);
       }
+      if (event.key === "Escape") {
+        setSelectedTrip((trip) => {
+          if (trip) {
+            resetMapView(mapRef.current);
+          }
+          return null;
+        });
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [isSearchOpen]);
 
   const setUserType = (userType: UserType) => setFilters((value) => ({ ...value, userTypes: toggleValue(value.userTypes, userType) }));
-  const setBikeModel = (bikeModel: BikeModel) => setFilters((value) => ({ ...value, bikeModels: toggleValue(value.bikeModels, bikeModel) }));
   const setBikeCategory = (bikeCategory: BikeCategory) =>
     setFilters((value) => ({ ...value, bikeCategories: toggleValue(value.bikeCategories, bikeCategory) }));
+  const deselectSelectedTrip = useCallback(() => {
+    setSelectedTrip(null);
+    resetMapView(mapRef.current);
+  }, []);
+  const openSearch = useCallback((mode: SearchMode = "time") => {
+    setSearchMode(mode);
+    setIsSearchOpen(true);
+  }, []);
+  const applyTimeSearch = useCallback(() => {
+    if (parsedSearchTime === null) {
+      return;
+    }
+    if (parsedSearchDate) {
+      setSelectedDate(parsedSearchDate);
+    }
+    setCurrentTime(parsedSearchTime);
+    setIsPlaying(false);
+    setIsSearchOpen(false);
+  }, [parsedSearchDate, parsedSearchTime]);
+  const selectSearchTrip = useCallback((trip: FlowTrip) => {
+    setCurrentTime(trip.startSeconds);
+    setIsPlaying(false);
+    setMapPopup(null);
+    setSelectedTrip(trip);
+    if (mapRef.current) {
+      focusTripPath(mapRef.current, trip);
+    }
+    setIsSearchOpen(false);
+  }, []);
 
   return (
-    <main className="app-shell">
+    <main className={selectedTrip ? "app-shell selected-mode" : "app-shell"}>
       <div ref={mapContainerRef} className="map" />
 
       <aside className="action-rail" aria-label="Bike Share flow controls">
@@ -669,6 +925,14 @@ export default function App() {
           <span className="rail-brand">Toronto Bike Share</span>
           <span className={`status-pill status-${loadState}`}>{formatLoadState(loadState)}</span>
         </div>
+
+        <button type="button" className="rail-control rail-search" onClick={() => openSearch("ride")}>
+          <span className="rail-main">
+            <Search size={18} />
+            Find ride
+          </span>
+          <kbd>⌘K</kbd>
+        </button>
 
         <label className="rail-control rail-select">
           <span className="rail-main">
@@ -689,14 +953,6 @@ export default function App() {
             {isPlaying ? "Pause" : "Play"}
           </span>
           <kbd>Space</kbd>
-        </button>
-
-        <button type="button" className="rail-control" onClick={() => setCurrentTime(0)}>
-          <span className="rail-main">
-            <RotateCcw size={17} />
-            Reset
-          </span>
-          <kbd>R</kbd>
         </button>
 
         <div className="rail-row">
@@ -745,22 +1001,6 @@ export default function App() {
             </div>
 
             <div className="filter-block">
-              <h3>Bike model</h3>
-              <div className="chip-row">
-                {(["ICONIC", "EFIT", "ASTRO"] as BikeModel[]).map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    className={filters.bikeModels.includes(value) ? "chip active" : "chip"}
-                    onClick={() => setBikeModel(value)}
-                  >
-                    {value}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="filter-block">
               <h3>Bike class</h3>
               <div className="chip-row">
                 {(["Classic", "E-bike"] as BikeCategory[]).map((value) => (
@@ -779,15 +1019,16 @@ export default function App() {
         )}
       </aside>
 
-      <section className="time-hud" aria-label="Current playback time">
-        <span className="time-date">{formattedDateLabel}</span>
-        <div className="time-readout">
-          <strong>{detailedClock.time}</strong>
-          <span className="time-meridiem">{detailedClock.meridiem}</span>
-        </div>
-      </section>
-
       <section className="timeline-dock" aria-label="Playback timeline">
+        <div className="timeline-header">
+          <div>
+            <span className="time-date">{formattedDateLabel}</span>
+            <strong>{detailedClock}</strong>
+          </div>
+          <span className="timeline-live-pill">
+            {currentTripMarkers.length.toLocaleString()} live
+          </span>
+        </div>
         <input
           type="range"
           min={0}
@@ -796,16 +1037,131 @@ export default function App() {
           value={Math.floor(currentTime)}
           onChange={(event) => setCurrentTime(Number(event.target.value))}
         />
-        <div className="timeline-meta-line">
-          <span className="timeline-inline-time">{timelineClock}</span>
-          <span className="timeline-inline-separator" aria-hidden="true">
-            ·
-          </span>
-          <span className="timeline-inline-live">
-            {currentTripMarkers.length.toLocaleString()} live trip{currentTripMarkers.length === 1 ? "" : "s"}
-          </span>
+        <div className="timeline-scale" aria-hidden="true">
+          <span>00:00</span>
+          <span>{timelineClock}</span>
+          <span>23:59</span>
         </div>
       </section>
+
+      {isSearchOpen && (
+        <div className="command-backdrop" role="presentation" onMouseDown={() => setIsSearchOpen(false)}>
+          <section className="command-panel" aria-label="Search rides and time" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="command-tabs">
+              <button
+                type="button"
+                className={searchMode === "time" ? "command-tab active" : "command-tab"}
+                onClick={() => setSearchMode("time")}
+              >
+                Search time/date
+              </button>
+              <button
+                type="button"
+                className={searchMode === "ride" ? "command-tab active" : "command-tab"}
+                onClick={() => setSearchMode("ride")}
+              >
+                Find ride
+              </button>
+              <button type="button" className="command-close" aria-label="Close search" onClick={() => setIsSearchOpen(false)}>
+                <X size={20} aria-hidden="true" />
+              </button>
+            </div>
+
+            <label className="command-input-row">
+              <Search size={24} aria-hidden="true" />
+              <input
+                ref={searchInputRef}
+                value={searchQuery}
+                placeholder={searchMode === "time" ? "Try 8:20am or 2026-01-01 4pm" : "Try start station, end station, or 8:05am"}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Tab") {
+                    event.preventDefault();
+                    setSearchMode((value) => (value === "time" ? "ride" : "time"));
+                  }
+                  if (event.key === "Enter" && searchMode === "time") {
+                    applyTimeSearch();
+                  }
+                  if (event.key === "Enter" && searchMode === "ride" && rideMatches[0]) {
+                    selectSearchTrip(rideMatches[0].trip);
+                  }
+                }}
+              />
+            </label>
+
+            <div className="command-results">
+              {searchMode === "time" ? (
+                <>
+                  <button type="button" className="command-primary-result" disabled={parsedSearchTime === null} onClick={applyTimeSearch}>
+                    <span>Jump to time</span>
+                    <strong>
+                      {parsedSearchTime === null
+                        ? "Enter a time"
+                        : `${parsedSearchDate ?? selectedDate} · ${formatClockCompact(parsedSearchTime)}`}
+                    </strong>
+                  </button>
+                </>
+              ) : (
+                <>
+                  {rideMatches.length ? (
+                    rideMatches.map(({ trip }) => (
+                      <button key={trip.tripId} type="button" className="command-ride-result" onClick={() => selectSearchTrip(trip)}>
+                        <span>{formatClockCompact(trip.startSeconds)}</span>
+                        <strong>
+                          {trip.startStationName} → {trip.endStationName}
+                        </strong>
+                        <em>{formatBikeLabel(trip)} · {formatDuration(trip.durationSeconds)}</em>
+                      </button>
+                    ))
+                  ) : (
+                    <p className="command-empty">Search the loaded day by station name or start time.</p>
+                  )}
+                </>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {selectedTrip && (
+        <aside className="selected-trip-card" aria-label="Selected trip details">
+          <div className="selected-trip-header">
+            <div className="selected-trip-title">
+              <Bike size={24} aria-hidden="true" />
+              <strong>{formatBikeLabel(selectedTrip)}</strong>
+            </div>
+            <div className="selected-trip-actions">
+              <span>{formatTripCode(selectedTrip)}</span>
+              <button type="button" aria-label="Deselect trip" onClick={deselectSelectedTrip}>
+                <X size={16} aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+
+          <div className="selected-trip-route">
+            <p>{selectedTrip.startStationName}</p>
+            <span>to</span>
+            <p>{selectedTrip.endStationName}</p>
+          </div>
+
+          <div className="selected-trip-time">
+            <strong>
+              {formatClockShort(selectedTrip.startSeconds)} – {formatClockShort(selectedTrip.endSeconds)}
+            </strong>
+          </div>
+
+          <div className="selected-trip-stats">
+            <span>{formatDuration(selectedTrip.durationSeconds)}</span>
+            <span>{formatDistance(selectedTrip.distanceMeters)}</span>
+            <span>{formatAverageSpeed(selectedTrip)}</span>
+          </div>
+
+          <div className="selected-trip-hint">
+            <kbd>Esc</kbd>
+            <span>to deselect</span>
+          </div>
+        </aside>
+      )}
 
       {loadState === "error" && (
         <p className="error-toast" role="alert">
