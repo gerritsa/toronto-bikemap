@@ -101,12 +101,11 @@ function analyticsFiltersMatch(row: Record<string, unknown>, request: AnalyticsL
   );
 }
 
-function buildAnalyticsOverview(daily: AnalyticsDailyPoint[], routeCount: number, totals: { distanceMeters: number; durationSeconds: number }) {
+function buildAnalyticsOverview(daily: AnalyticsDailyPoint[], totals: { distanceMeters: number; durationSeconds: number }) {
   const tripCount = daily.reduce((sum, row) => sum + row.tripCount, 0);
   const dayCount = daily.length;
   return {
     tripCount,
-    routeCount,
     distanceMeters: totals.distanceMeters,
     durationSeconds: totals.durationSeconds,
     avgTripsPerDay: dayCount ? tripCount / dayCount : 0,
@@ -305,12 +304,11 @@ async function loadTrips(request: TripLoadRequest): Promise<TripLoadResponse> {
 }
 
 async function loadAnalyticsFromJson(request: AnalyticsLoadRequest): Promise<AnalyticsLoadResponse> {
-  const [dailyResponse, hourlyResponse, routesResponse] = await Promise.all([
+  const [dailyResponse, hourlyResponse] = await Promise.all([
     fetch(request.dailyUrl),
-    fetch(request.hourlyUrl),
-    fetch(request.routesDailyUrl)
+    fetch(request.hourlyUrl)
   ]);
-  if (!dailyResponse.ok || !hourlyResponse.ok || !routesResponse.ok) {
+  if (!dailyResponse.ok || !hourlyResponse.ok) {
     throw new Error("Analytics files could not be loaded");
   }
 
@@ -340,30 +338,13 @@ async function loadAnalyticsFromJson(request: AnalyticsLoadRequest): Promise<Ana
     .sort((first, second) => first[0] - second[0])
     .map(([hour, tripCount]) => ({ hour, tripCount }));
 
-  const routesRows = ((await routesResponse.json()) as Array<Record<string, unknown>>).filter((row) => analyticsFiltersMatch(row, request));
-  const routeMap = new Map<string, AnalyticsTopRoute>();
-  for (const row of routesRows) {
-    const routeId = String(row.route_id ?? "");
-    const existing = routeMap.get(routeId);
-    routeMap.set(routeId, {
-      routeId,
-      startStationName: String(row.start_station_name ?? ""),
-      endStationName: String(row.end_station_name ?? ""),
-      tripCount: (existing?.tripCount ?? 0) + numberField(row.trip_count),
-      distanceMeters: existing?.distanceMeters ?? numberField(row.distance_meters)
-    });
-  }
-  const topRoutes = [...routeMap.values()]
-    .sort((first, second) => second.tripCount - first.tripCount || first.routeId.localeCompare(second.routeId))
-    .slice(0, request.topRouteLimit);
-
   return {
     type: "analyticsLoaded",
     requestId: request.requestId,
-    overview: buildAnalyticsOverview(daily, routeMap.size, { distanceMeters, durationSeconds }),
+    overview: buildAnalyticsOverview(daily, { distanceMeters, durationSeconds }),
     daily,
     hourly,
-    topRoutes
+    topRoutes: []
   };
 }
 
@@ -412,38 +393,34 @@ async function loadAnalyticsFromParquet(request: AnalyticsLoadRequest): Promise<
       tripCount: numberField(row.trip_count)
     }));
 
-    const routesCountTable = await connection.query(`
-      SELECT COUNT(DISTINCT route_id)::INTEGER AS route_count
-      FROM read_parquet(${sqlString(request.routesDailyUrl)})
-      WHERE ${where}
-    `);
-    const routeCount = numberField(routesCountTable.toArray()[0]?.route_count);
-
-    const routesTable = await connection.query(`
-      SELECT
-        route_id,
-        MIN(start_station_name) AS start_station_name,
-        MIN(end_station_name) AS end_station_name,
-        SUM(trip_count)::INTEGER AS trip_count,
-        MAX(distance_meters)::DOUBLE AS distance_meters
-      FROM read_parquet(${sqlString(request.routesDailyUrl)})
-      WHERE ${where}
-      GROUP BY route_id
-      ORDER BY trip_count DESC, route_id
-      LIMIT ${request.topRouteLimit}
-    `);
-    const topRoutes = routesTable.toArray().map((row) => ({
-      routeId: String(row.route_id ?? ""),
-      startStationName: String(row.start_station_name ?? ""),
-      endStationName: String(row.end_station_name ?? ""),
-      tripCount: numberField(row.trip_count),
-      distanceMeters: numberField(row.distance_meters)
-    }));
+    let topRoutes: AnalyticsTopRoute[] = [];
+    if (request.routesDailyUrl) {
+      const routesTable = await connection.query(`
+        SELECT
+          route_id,
+          MIN(start_station_name) AS start_station_name,
+          MIN(end_station_name) AS end_station_name,
+          SUM(trip_count)::INTEGER AS trip_count,
+          MAX(distance_meters)::DOUBLE AS distance_meters
+        FROM read_parquet(${sqlString(request.routesDailyUrl)})
+        WHERE ${where}
+        GROUP BY route_id
+        ORDER BY trip_count DESC, route_id
+        LIMIT ${request.topRouteLimit}
+      `);
+      topRoutes = routesTable.toArray().map((row) => ({
+        routeId: String(row.route_id ?? ""),
+        startStationName: String(row.start_station_name ?? ""),
+        endStationName: String(row.end_station_name ?? ""),
+        tripCount: numberField(row.trip_count),
+        distanceMeters: numberField(row.distance_meters)
+      }));
+    }
 
     return {
       type: "analyticsLoaded",
       requestId: request.requestId,
-      overview: buildAnalyticsOverview(daily, routeCount, { distanceMeters, durationSeconds }),
+      overview: buildAnalyticsOverview(daily, { distanceMeters, durationSeconds }),
       daily,
       hourly,
       topRoutes
@@ -454,7 +431,7 @@ async function loadAnalyticsFromParquet(request: AnalyticsLoadRequest): Promise<
 }
 
 async function loadAnalytics(request: AnalyticsLoadRequest): Promise<AnalyticsLoadResponse> {
-  if (request.dailyUrl.endsWith(".json") || request.hourlyUrl.endsWith(".json") || request.routesDailyUrl.endsWith(".json")) {
+  if (request.dailyUrl.endsWith(".json") || request.hourlyUrl.endsWith(".json")) {
     return loadAnalyticsFromJson(request);
   }
   return loadAnalyticsFromParquet(request);

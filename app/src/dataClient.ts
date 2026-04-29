@@ -109,7 +109,7 @@ export class TripDataClient {
   loadAnalytics(params: {
     dailyUrl: string;
     hourlyUrl: string;
-    routesDailyUrl: string;
+    routesDailyUrl?: string;
     dateStart: string;
     dateEnd: string;
     filters: FilterState;

@@ -1,14 +1,7 @@
-import { BarChart3, CalendarRange, Clock3, Route, Timer } from "lucide-react";
+import { BarChart3, CalendarRange, Clock3, Timer } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { TripDataClient } from "./dataClient";
-import type {
-  AnalyticsDailyPoint,
-  AnalyticsHourlyPoint,
-  AnalyticsOverview,
-  AnalyticsTopRoute,
-  FilterState,
-  PublishedManifest
-} from "./types";
+import type { AnalyticsDailyPoint, AnalyticsHourlyPoint, AnalyticsOverview, AnalyticsTopRoute, FilterState, PublishedManifest } from "./types";
 
 type AnalyticsPageProps = {
   manifest: PublishedManifest | null;
@@ -26,7 +19,6 @@ type AnalyticsState = {
 const EMPTY_ANALYTICS: AnalyticsState = {
   overview: {
     tripCount: 0,
-    routeCount: 0,
     distanceMeters: 0,
     durationSeconds: 0,
     avgTripsPerDay: 0,
@@ -77,6 +69,24 @@ function chartBarWidth(value: number, maxValue: number) {
   return `${Math.max(6, Math.round((value / maxValue) * 100))}%`;
 }
 
+function topDailyPoint(daily: AnalyticsDailyPoint[]) {
+  return daily.reduce<AnalyticsDailyPoint | null>((best, row) => {
+    if (!best || row.tripCount > best.tripCount) {
+      return row;
+    }
+    return best;
+  }, null);
+}
+
+function topHourlyPoint(hourly: AnalyticsHourlyPoint[]) {
+  return hourly.reduce<AnalyticsHourlyPoint | null>((best, row) => {
+    if (!best || row.tripCount > best.tripCount) {
+      return row;
+    }
+    return best;
+  }, null);
+}
+
 export function AnalyticsPage({ manifest, filters, dataClient }: AnalyticsPageProps) {
   const [dateStart, setDateStart] = useState(manifest?.source.dateMin ?? "");
   const [dateEnd, setDateEnd] = useState(manifest?.source.dateMax ?? "");
@@ -92,6 +102,8 @@ export function AnalyticsPage({ manifest, filters, dataClient }: AnalyticsPagePr
   const range = useMemo(() => normalizedRange(dateStart, dateEnd), [dateEnd, dateStart]);
   const dailyMax = useMemo(() => analytics.daily.reduce((max, row) => Math.max(max, row.tripCount), 0), [analytics.daily]);
   const hourlyMax = useMemo(() => analytics.hourly.reduce((max, row) => Math.max(max, row.tripCount), 0), [analytics.hourly]);
+  const peakDay = useMemo(() => topDailyPoint(analytics.daily), [analytics.daily]);
+  const peakHour = useMemo(() => topHourlyPoint(analytics.hourly), [analytics.hourly]);
 
   useEffect(() => {
     if (!manifest?.analytics || !dataClient || !range.dateStart || !range.dateEnd) {
@@ -198,11 +210,11 @@ export function AnalyticsPage({ manifest, filters, dataClient }: AnalyticsPagePr
         </article>
         <article className="analytics-card">
           <span className="analytics-card-label">
-            <Route size={16} />
-            Routes
+            <CalendarRange size={16} />
+            Coverage
           </span>
-          <strong>{analytics.overview.routeCount.toLocaleString()}</strong>
-          <p>Unique routes in range</p>
+          <strong>{analytics.overview.dayCount.toLocaleString()}</strong>
+          <p>Days in range</p>
         </article>
         <article className="analytics-card">
           <span className="analytics-card-label">
@@ -223,10 +235,10 @@ export function AnalyticsPage({ manifest, filters, dataClient }: AnalyticsPagePr
         <article className="analytics-card">
           <span className="analytics-card-label">
             <Clock3 size={16} />
-            Avg/day
+            Peak day
           </span>
-          <strong>{analytics.overview.avgTripsPerDay.toFixed(1)}</strong>
-          <p>Trips per day</p>
+          <strong>{peakDay ? peakDay.tripCount.toLocaleString() : "0"}</strong>
+          <p>{peakDay ? formatDateLabel(peakDay.serviceDate) : "No daily data"}</p>
         </article>
       </div>
 
@@ -278,29 +290,29 @@ export function AnalyticsPage({ manifest, filters, dataClient }: AnalyticsPagePr
         </section>
       </div>
 
-      <section className="analytics-panel analytics-routes-panel">
+      <section className="analytics-panel analytics-snapshot-panel">
         <div className="analytics-panel-header">
-          <h2>Most popular routes</h2>
-          <span>Top {analytics.topRoutes.length || 0}</span>
+          <h2>Range snapshot</h2>
+          <span>Lean analytics</span>
         </div>
-        {analytics.topRoutes.length ? (
-          <div className="analytics-route-table">
-            {analytics.topRoutes.map((route, index) => (
-              <div key={route.routeId} className="analytics-route-row">
-                <span className="analytics-route-rank">{index + 1}</span>
-                <div className="analytics-route-main">
-                  <strong>
-                    {route.startStationName} to {route.endStationName}
-                  </strong>
-                  <span>{formatDistance(route.distanceMeters)}</span>
-                </div>
-                <span className="analytics-route-count">{route.tripCount.toLocaleString()} trips</span>
-              </div>
-            ))}
+        <div className="analytics-snapshot-grid">
+          <div className="analytics-snapshot-item">
+            <span>Average day</span>
+            <strong>{analytics.overview.avgTripsPerDay.toFixed(1)} trips</strong>
           </div>
-        ) : (
-          <p className="analytics-empty">No route analytics for this range.</p>
-        )}
+          <div className="analytics-snapshot-item">
+            <span>Busiest hour</span>
+            <strong>{peakHour ? `${formatHourLabel(peakHour.hour)} (${peakHour.tripCount.toLocaleString()})` : "No hourly data"}</strong>
+          </div>
+          <div className="analytics-snapshot-item">
+            <span>Rider types</span>
+            <strong>{filters.userTypes.join(", ")}</strong>
+          </div>
+          <div className="analytics-snapshot-item">
+            <span>Bike mix</span>
+            <strong>{filters.bikeCategories.join(", ")}</strong>
+          </div>
+        </div>
       </section>
 
       {loadState === "loading" && <p className="analytics-status">Loading analytics…</p>}

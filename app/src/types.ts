@@ -31,7 +31,7 @@ export type PublishedManifest = {
   analytics?: {
     dailyUrl: string;
     hourlyUrl: string;
-    routesDailyUrl: string;
+    routesDailyUrl?: string;
   };
   filters: {
     userTypes: UserType[];
@@ -91,7 +91,6 @@ export type TripLoadResponse =
 
 export type AnalyticsOverview = {
   tripCount: number;
-  routeCount: number;
   distanceMeters: number;
   durationSeconds: number;
   avgTripsPerDay: number;
@@ -121,7 +120,7 @@ export type AnalyticsLoadRequest = {
   requestId: string;
   dailyUrl: string;
   hourlyUrl: string;
-  routesDailyUrl: string;
+  routesDailyUrl?: string;
   dateStart: string;
   dateEnd: string;
   filters: FilterState;

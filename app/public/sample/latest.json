@@ -19,8 +19,7 @@
   },
   "analytics": {
     "dailyUrl": "/sample/analytics/daily.json",
-    "hourlyUrl": "/sample/analytics/hourly.json",
-    "routesDailyUrl": "/sample/analytics/routes_daily.json"
+    "hourlyUrl": "/sample/analytics/hourly.json"
   },
   "filters": {
     "userTypes": ["Member", "Casual"],

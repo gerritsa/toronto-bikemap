@@ -9,7 +9,7 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-from .analytics import build_daily_analytics, build_hourly_analytics, build_routes_daily_analytics
+from .analytics import build_daily_analytics, build_hourly_analytics
 from .config import CKAN_PACKAGE_URL, DEFAULT_MISSING_STATION_TRIP_THRESHOLD
 from .io import (
     download_file,
@@ -92,7 +92,6 @@ def build_manifest(resources: list[dict], trips: pd.DataFrame, run_id: str, publ
         "analytics": {
             "dailyUrl": f"{run_base}/analytics/daily.parquet",
             "hourlyUrl": f"{run_base}/analytics/hourly.parquet",
-            "routesDailyUrl": f"{run_base}/analytics/routes_daily.parquet",
         },
         "filters": {
             "userTypes": sorted(trips["user_type"].unique().tolist()),
@@ -212,7 +211,6 @@ def main() -> None:
     validate_outputs(trips, routes, stations)
     daily_analytics = build_daily_analytics(trips, routes)
     hourly_analytics = build_hourly_analytics(trips)
-    routes_daily_analytics = build_routes_daily_analytics(trips, routes)
 
     run_dir = args.output_dir / "runs" / run_id
     write_partitioned_trips(trips, run_dir / "trips")
@@ -221,7 +219,6 @@ def main() -> None:
     write_parquet(stations, run_dir / "stations" / "stations.parquet")
     write_parquet(daily_analytics, run_dir / "analytics" / "daily.parquet")
     write_parquet(hourly_analytics, run_dir / "analytics" / "hourly.parquet")
-    write_parquet(routes_daily_analytics, run_dir / "analytics" / "routes_daily.parquet")
     has_basemap = bool(args.basemap_path and args.basemap_path.exists())
     if has_basemap:
         (run_dir / "basemap").mkdir(parents=True, exist_ok=True)
