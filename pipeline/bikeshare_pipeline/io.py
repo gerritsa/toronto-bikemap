@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import io
 import zipfile
 from pathlib import Path
 
@@ -27,13 +28,29 @@ def download_file(url: str, destination: Path) -> None:
                     file.write(chunk)
 
 
+def read_csv_bytes(payload: bytes) -> pd.DataFrame:
+    last_error: Exception | None = None
+    for encoding in ("utf-8", "cp1252", "latin-1"):
+        try:
+            return pd.read_csv(io.BytesIO(payload), dtype=str, encoding=encoding)
+        except UnicodeDecodeError as error:
+            last_error = error
+    if last_error is not None:
+        raise last_error
+    raise ValueError("Could not decode CSV payload")
+
+
 def read_trip_zip(path: Path) -> pd.DataFrame:
     with zipfile.ZipFile(path) as archive:
-        csv_names = [name for name in archive.namelist() if name.lower().endswith(".csv")]
-        if len(csv_names) != 1:
-            raise ValueError(f"Expected one CSV in {path}, found {csv_names}")
-        with archive.open(csv_names[0]) as file:
-            return pd.read_csv(file, dtype=str)
+        csv_names = sorted(name for name in archive.namelist() if name.lower().endswith(".csv"))
+        if not csv_names:
+            raise ValueError(f"Expected at least one CSV in {path}, found none")
+
+        frames: list[pd.DataFrame] = []
+        for csv_name in csv_names:
+            with archive.open(csv_name) as file:
+                frames.append(read_csv_bytes(file.read()))
+        return pd.concat(frames, ignore_index=True)
 
 
 def write_parquet(frame: pd.DataFrame, path: Path) -> None:

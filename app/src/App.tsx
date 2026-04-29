@@ -1,7 +1,8 @@
 import { Deck } from "@deck.gl/core";
 import { TripsLayer } from "@deck.gl/geo-layers";
 import { IconLayer, PathLayer, ScatterplotLayer } from "@deck.gl/layers";
-import { Bike, CalendarDays, Pause, Play, Search, SlidersHorizontal, X } from "lucide-react";
+import { AnalyticsPage } from "./AnalyticsPage";
+import { BarChart3, Bike, CalendarDays, Pause, Play, Search, SlidersHorizontal, X } from "lucide-react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -39,16 +40,17 @@ type StationPopup = {
 };
 type MapPopup = StationPopup;
 type SearchMode = "time" | "ride";
+type AppView = "map" | "analytics";
 type RideSearchMatch = {
   trip: FlowTrip;
   score: number;
 };
 
-const TRIP_TRAIL_LENGTH_SECONDS = 180;
+const TRIP_TRAIL_LENGTH_SECONDS = 420;
 const FINISH_BURST_MS = 1100;
 const DEFAULT_SELECTED_DATE = "2026-01-01";
 const DEFAULT_START_SECONDS = 0;
-const SELECTED_ROUTE_COLOR: [number, number, number, number] = [232, 190, 118, 220];
+const SELECTED_ROUTE_COLOR: [number, number, number, number] = [255, 255, 255, 245];
 
 const ARROW_ICON_ATLAS =
   `data:image/svg+xml;base64,${btoa(`
@@ -378,6 +380,7 @@ export default function App() {
   const [manifest, setManifest] = useState<PublishedManifest | null>(null);
   const [selectedDate, setSelectedDate] = useState(DEFAULT_SELECTED_DATE);
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  const [activeView, setActiveView] = useState<AppView>("map");
   const [trips, setTrips] = useState<FlowTrip[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("idle");
   const [errorMessage, setErrorMessage] = useState("");
@@ -424,6 +427,12 @@ export default function App() {
     }),
     [activeTrips, currentTime]
   );
+  const selectedTripMarker = useMemo(() => {
+    if (!selectedTrip) {
+      return null;
+    }
+    return markerForTrip(selectedTrip, currentTime);
+  }, [currentTime, selectedTrip]);
   const finishPulses = useMemo(() => createFinishPulses(finishBursts), [currentTime, finishBursts]);
 
   useEffect(() => {
@@ -463,7 +472,7 @@ export default function App() {
           return;
         }
         setManifest(loadedManifest);
-        setSelectedDate(loadedManifest.dates[0] ?? "");
+        setSelectedDate(loadedManifest.dates[loadedManifest.dates.length - 1] ?? "");
         setLoadState("idle");
       })
       .catch((error) => {
@@ -479,7 +488,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!manifest || !mapContainerRef.current) {
+    if (activeView !== "map" || !manifest || !mapContainerRef.current) {
       return;
     }
 
@@ -591,7 +600,7 @@ export default function App() {
       deck.finalize();
       deckRef.current = null;
     };
-  }, [manifest]);
+  }, [activeView, manifest]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -659,9 +668,9 @@ export default function App() {
       getPath: (trip) => trip.path,
       getTimestamps: (trip) => trip.timestamps,
       getColor: tripColor,
-      opacity: 0.35,
-      widthMinPixels: 2,
-      widthMaxPixels: 5,
+      opacity: 0.62,
+      widthMinPixels: 3,
+      widthMaxPixels: 6,
       trailLength: TRIP_TRAIL_LENGTH_SECONDS,
       currentTime,
       capRounded: true,
@@ -673,9 +682,9 @@ export default function App() {
       data: selectedTrip ? [selectedTrip] : [],
       getPath: (trip) => trip.path,
       getColor: () => SELECTED_ROUTE_COLOR,
-      opacity: 0.92,
-      widthMinPixels: 3,
-      widthMaxPixels: 4,
+      opacity: 1,
+      widthMinPixels: 4,
+      widthMaxPixels: 6,
       capRounded: true,
       jointRounded: true,
       pickable: true
@@ -689,10 +698,24 @@ export default function App() {
       getPosition: (marker) => marker.position,
       getAngle: (marker) => -marker.bearing,
       getColor: (marker) => tripColor(marker.trip),
-      getSize: 9,
+      getSize: 13,
       sizeUnits: "pixels",
       billboard: false,
       pickable: true
+    });
+    const selectedArrowLayer = new IconLayer<TripMarker>({
+      id: "bike-share-selected-trip-arrow",
+      data: selectedTripMarker ? [selectedTripMarker] : [],
+      iconAtlas: ARROW_ICON_ATLAS,
+      iconMapping: ARROW_ICON_MAPPING,
+      getIcon: () => "arrow",
+      getPosition: (marker) => marker.position,
+      getAngle: (marker) => -marker.bearing,
+      getColor: (marker) => tripColor(marker.trip),
+      getSize: 18,
+      sizeUnits: "pixels",
+      billboard: false,
+      pickable: false
     });
     const finishBurstLayer = new ScatterplotLayer<FinishPulse>({
       id: "bike-share-finish-bursts",
@@ -711,11 +734,11 @@ export default function App() {
       pickable: false
     });
 
-    deckRef.current.setProps({ layers: [layer, selectedTripLayer, arrowLayer, finishBurstLayer] });
-  }, [activeTrips, currentTime, currentTripMarkers, finishPulses, selectedTrip]);
+    deckRef.current.setProps({ layers: [layer, selectedTripLayer, arrowLayer, finishBurstLayer, selectedArrowLayer] });
+  }, [activeTrips, currentTime, currentTripMarkers, finishPulses, selectedTrip, selectedTripMarker]);
 
   const loadTripsForSelection = useCallback(async () => {
-    if (!manifest || !selectedDate || !dataClientRef.current) {
+    if (activeView !== "map" || !manifest || !selectedDate || !dataClientRef.current) {
       return;
     }
 
@@ -745,7 +768,7 @@ export default function App() {
 
     setTrips(response.trips);
     setLoadState(response.trips.length ? "ready" : "empty");
-  }, [filters, manifest, selectedDate]);
+  }, [activeView, filters, manifest, selectedDate]);
 
   useEffect(() => {
     void loadTripsForSelection();
@@ -918,7 +941,7 @@ export default function App() {
 
   return (
     <main className={selectedTrip ? "app-shell selected-mode" : "app-shell"}>
-      <div ref={mapContainerRef} className="map" />
+      {activeView === "map" ? <div ref={mapContainerRef} className="map" /> : <div className="analytics-backdrop" />}
 
       <aside className="action-rail" aria-label="Bike Share flow controls">
         <div className="rail-meta">
@@ -926,57 +949,94 @@ export default function App() {
           <span className={`status-pill status-${loadState}`}>{formatLoadState(loadState)}</span>
         </div>
 
-        <button type="button" className="rail-control rail-search" onClick={() => openSearch("ride")}>
-          <span className="rail-main">
-            <Search size={18} />
-            Find ride
-          </span>
-          <kbd>⌘K</kbd>
-        </button>
+        <div className="rail-segmented" role="tablist" aria-label="View mode">
+          <button
+            type="button"
+            className={activeView === "map" ? "rail-segment active" : "rail-segment"}
+            onClick={() => setActiveView("map")}
+          >
+            <Bike size={16} />
+            Map
+          </button>
+          <button
+            type="button"
+            className={activeView === "analytics" ? "rail-segment active" : "rail-segment"}
+            onClick={() => {
+              setActiveView("analytics");
+              setSelectedTrip(null);
+              setIsSearchOpen(false);
+            }}
+          >
+            <BarChart3 size={16} />
+            Analytics
+          </button>
+        </div>
 
-        <label className="rail-control rail-select">
-          <span className="rail-main">
-            <CalendarDays size={18} />
-            <select value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} disabled={!availableDates.length}>
-              {availableDates.map((date) => (
-                <option key={date} value={date}>
-                  {date}
-                </option>
-              ))}
-            </select>
-          </span>
-        </label>
+        {activeView === "map" && (
+          <>
+            <button type="button" className="rail-control rail-search" onClick={() => openSearch("ride")}>
+              <span className="rail-main">
+                <Search size={18} />
+                Find ride
+              </span>
+              <kbd>⌘K</kbd>
+            </button>
 
-        <button type="button" className="rail-control rail-control-primary" onClick={() => setIsPlaying((value) => !value)}>
-          <span className="rail-main">
-            {isPlaying ? <Pause size={18} /> : <Play size={18} />}
-            {isPlaying ? "Pause" : "Play"}
-          </span>
-          <kbd>Space</kbd>
-        </button>
+            <label className="rail-control rail-select">
+              <span className="rail-main">
+                <CalendarDays size={18} />
+                <select value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} disabled={!availableDates.length}>
+                  {availableDates.map((date) => (
+                    <option key={date} value={date}>
+                      {date}
+                    </option>
+                  ))}
+                </select>
+              </span>
+            </label>
 
-        <div className="rail-row">
-          <label className="rail-control rail-control-compact rail-select">
-            <span className="rail-main">
-              <SlidersHorizontal size={17} />
-              <select value={speed} onChange={(event) => setSpeed(Number(event.target.value))}>
-                {SPEEDS.map((value) => (
-                  <option key={value} value={value}>
-                    {value}x
-                  </option>
-                ))}
-              </select>
-            </span>
-          </label>
+            <button type="button" className="rail-control rail-control-primary" onClick={() => setIsPlaying((value) => !value)}>
+              <span className="rail-main">
+                {isPlaying ? <Pause size={18} /> : <Play size={18} />}
+                {isPlaying ? "Pause" : "Play"}
+              </span>
+              <kbd>Space</kbd>
+            </button>
 
-          <button type="button" className="rail-control rail-control-compact" onClick={() => setIsFiltersOpen((value) => !value)}>
+            <div className="rail-row">
+              <label className="rail-control rail-control-compact rail-select">
+                <span className="rail-main">
+                  <SlidersHorizontal size={17} />
+                  <select value={speed} onChange={(event) => setSpeed(Number(event.target.value))}>
+                    {SPEEDS.map((value) => (
+                      <option key={value} value={value}>
+                        {value}x
+                      </option>
+                    ))}
+                  </select>
+                </span>
+              </label>
+
+              <button type="button" className="rail-control rail-control-compact" onClick={() => setIsFiltersOpen((value) => !value)}>
+                <span className="rail-main">
+                  <SlidersHorizontal size={17} />
+                  Filters
+                </span>
+                <kbd>F</kbd>
+              </button>
+            </div>
+          </>
+        )}
+
+        {activeView === "analytics" && (
+          <button type="button" className="rail-control" onClick={() => setIsFiltersOpen((value) => !value)}>
             <span className="rail-main">
               <SlidersHorizontal size={17} />
               Filters
             </span>
             <kbd>F</kbd>
           </button>
-        </div>
+        )}
 
         {isFiltersOpen && (
           <div className="filter-drawer">
@@ -1019,32 +1079,36 @@ export default function App() {
         )}
       </aside>
 
-      <section className="timeline-dock" aria-label="Playback timeline">
-        <div className="timeline-header">
-          <div>
-            <span className="time-date">{formattedDateLabel}</span>
-            <strong>{detailedClock}</strong>
+      {activeView === "map" ? (
+        <section className="timeline-dock" aria-label="Playback timeline">
+          <div className="timeline-header">
+            <div>
+              <span className="time-date">{formattedDateLabel}</span>
+              <strong>{detailedClock}</strong>
+            </div>
+            <span className="timeline-live-pill">
+              {currentTripMarkers.length.toLocaleString()} live
+            </span>
           </div>
-          <span className="timeline-live-pill">
-            {currentTripMarkers.length.toLocaleString()} live
-          </span>
-        </div>
-        <input
-          type="range"
-          min={0}
-          max={DAY_SECONDS - 1}
-          step={60}
-          value={Math.floor(currentTime)}
-          onChange={(event) => setCurrentTime(Number(event.target.value))}
-        />
-        <div className="timeline-scale" aria-hidden="true">
-          <span>00:00</span>
-          <span>{timelineClock}</span>
-          <span>23:59</span>
-        </div>
-      </section>
+          <input
+            type="range"
+            min={0}
+            max={DAY_SECONDS - 1}
+            step={60}
+            value={Math.floor(currentTime)}
+            onChange={(event) => setCurrentTime(Number(event.target.value))}
+          />
+          <div className="timeline-scale" aria-hidden="true">
+            <span>00:00</span>
+            <span>{timelineClock}</span>
+            <span>23:59</span>
+          </div>
+        </section>
+      ) : (
+        <AnalyticsPage manifest={manifest} filters={filters} dataClient={dataClientRef.current} />
+      )}
 
-      {isSearchOpen && (
+      {activeView === "map" && isSearchOpen && (
         <div className="command-backdrop" role="presentation" onMouseDown={() => setIsSearchOpen(false)}>
           <section className="command-panel" aria-label="Search rides and time" onMouseDown={(event) => event.stopPropagation()}>
             <div className="command-tabs">
@@ -1072,7 +1136,7 @@ export default function App() {
               <input
                 ref={searchInputRef}
                 value={searchQuery}
-                placeholder={searchMode === "time" ? "Try 8:20am or 2026-01-01 4pm" : "Try start station, end station, or 8:05am"}
+                placeholder={searchMode === "time" ? "Try 8:20am or YYYY-MM-DD 4pm" : "Try start station, end station, or 8:05am"}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Tab") {
@@ -1123,7 +1187,7 @@ export default function App() {
         </div>
       )}
 
-      {selectedTrip && (
+      {activeView === "map" && selectedTrip && (
         <aside className="selected-trip-card" aria-label="Selected trip details">
           <div className="selected-trip-header">
             <div className="selected-trip-title">

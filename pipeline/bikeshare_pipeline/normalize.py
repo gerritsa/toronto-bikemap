@@ -5,7 +5,7 @@ from typing import Any
 
 import pandas as pd
 
-from .config import BIKE_CATEGORIES
+from .config import BIKE_CATEGORIES, BIKE_MODEL_ALIASES
 
 
 def normalize_station_id(value: Any) -> str:
@@ -17,11 +17,23 @@ def normalize_station_id(value: Any) -> str:
     return text
 
 
-def bike_category(model: Any) -> str:
+def normalize_bike_model(model: Any) -> str:
     model_text = str(model).strip()
-    if model_text not in BIKE_CATEGORIES:
-        raise ValueError(f"Unsupported Bike_Model: {model_text}")
-    return BIKE_CATEGORIES[model_text]
+    if model_text in BIKE_MODEL_ALIASES:
+        return BIKE_MODEL_ALIASES[model_text]
+
+    for prefix, canonical in (("EFIT", "EFIT"), ("ICONIC", "ICONIC"), ("ASTRO", "ASTRO")):
+        if model_text.startswith(prefix):
+            return canonical
+
+    raise ValueError(f"Unsupported Bike_Model: {model_text}")
+
+
+def bike_category(model: Any) -> str:
+    canonical_model = normalize_bike_model(model)
+    if canonical_model not in BIKE_CATEGORIES:
+        raise ValueError(f"Unsupported Bike_Model: {canonical_model}")
+    return BIKE_CATEGORIES[canonical_model]
 
 
 def normal_route_id(start_station_id: str, end_station_id: str) -> str:
@@ -75,7 +87,7 @@ def normalize_trips(frame: pd.DataFrame) -> pd.DataFrame:
         "int32"
     )
     trips["user_type"] = frame["User_Type"].astype(str).str.strip()
-    trips["bike_model"] = frame["Bike_Model"].astype(str).str.strip()
+    trips["bike_model"] = frame["Bike_Model"].map(normalize_bike_model)
     trips["bike_category"] = trips["bike_model"].map(bike_category)
     internal_station = trips["start_station_name"].map(is_internal_station_name) | trips["end_station_name"].map(
         is_internal_station_name

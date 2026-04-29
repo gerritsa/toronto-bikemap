@@ -22,6 +22,7 @@
   --shadow-strong: 0 0 28px rgba(0, 0, 0, 0.42);
   --edge-inset: 18px;
   --attribution-height: 24px;
+  --right-panel-width: clamp(320px, 28vw, 460px);
 }
 
 * {
@@ -100,6 +101,14 @@ p {
 
 .map canvas {
   outline: none;
+}
+
+.analytics-backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at top, rgba(125, 207, 255, 0.08), transparent 34%),
+    linear-gradient(180deg, rgba(8, 10, 14, 0.96), rgba(5, 6, 9, 0.98));
 }
 
 /* Bike share station popup (MapLibre), aligned with HUD panels */
@@ -284,6 +293,36 @@ p {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
+}
+
+.rail-segmented {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.rail-segment {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(19, 22, 29, 0.72), rgba(10, 12, 17, 0.68)),
+    rgba(10, 12, 16, 0.62);
+  color: var(--muted-strong);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.26), inset 0 1px 0 rgba(255, 255, 255, 0.045);
+  backdrop-filter: blur(18px);
+}
+
+.rail-segment.active {
+  border-color: rgba(125, 207, 255, 0.22);
+  color: var(--text);
+  background:
+    linear-gradient(180deg, rgba(35, 58, 74, 0.82), rgba(12, 18, 25, 0.78)),
+    rgba(10, 12, 16, 0.8);
 }
 
 .rail-control {
@@ -650,7 +689,7 @@ kbd {
   bottom: auto;
   left: auto;
   display: grid;
-  width: clamp(320px, 28vw, 460px);
+  width: var(--right-panel-width);
   gap: 12px;
   border: 1px solid rgba(255, 255, 255, 0.085);
   border-radius: 24px;
@@ -899,10 +938,10 @@ kbd {
 }
 
 .selected-trip-card {
-  top: 136px;
+  top: 170px;
   right: var(--edge-inset);
   display: grid;
-  width: clamp(300px, 21vw, 380px);
+  width: var(--right-panel-width);
   gap: 10px;
   border: 1px solid var(--line);
   border-radius: 22px;
@@ -1035,6 +1074,264 @@ kbd {
   font-weight: 500;
 }
 
+.analytics-shell {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  bottom: 18px;
+  left: 306px;
+  z-index: 4;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(14, 17, 23, 0.82), rgba(9, 12, 17, 0.9)),
+    rgba(8, 10, 14, 0.86);
+  box-shadow: var(--shadow-strong);
+  backdrop-filter: blur(22px);
+  overflow: hidden;
+}
+
+.analytics-empty-state {
+  place-items: center;
+}
+
+.analytics-empty-copy {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  color: var(--muted-strong);
+  text-align: center;
+}
+
+.analytics-empty-copy strong {
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 750;
+}
+
+.analytics-empty-copy p,
+.analytics-empty,
+.analytics-status {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.analytics-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: end;
+}
+
+.analytics-eyebrow {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.analytics-header h1 {
+  margin-top: 5px;
+  font-size: 28px;
+  font-weight: 760;
+  letter-spacing: 0;
+}
+
+.analytics-range {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(148px, 1fr));
+  gap: 8px;
+}
+
+.analytics-range label {
+  display: grid;
+  gap: 6px;
+}
+
+.analytics-range span,
+.analytics-panel-header span,
+.analytics-card p,
+.analytics-route-main span,
+.analytics-route-count {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.analytics-range input {
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0 12px;
+  color: var(--text);
+}
+
+.analytics-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.analytics-card,
+.analytics-panel {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 16px;
+}
+
+.analytics-card {
+  display: grid;
+  gap: 8px;
+}
+
+.analytics-card-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-strong);
+  font-size: 12px;
+}
+
+.analytics-card strong {
+  font-size: 24px;
+  font-weight: 740;
+}
+
+.analytics-panels {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  min-height: 0;
+}
+
+.analytics-panel {
+  min-height: 0;
+}
+
+.analytics-panel-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.analytics-panel h2 {
+  letter-spacing: 0;
+}
+
+.analytics-bar-list,
+.analytics-route-table {
+  display: grid;
+  gap: 10px;
+}
+
+.analytics-bar-list {
+  max-height: 100%;
+  overflow: auto;
+}
+
+.analytics-bar-row {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.analytics-bar-row span,
+.analytics-bar-row strong {
+  font-size: 12px;
+}
+
+.analytics-bar-row strong {
+  min-width: 44px;
+  text-align: right;
+}
+
+.analytics-bar-track {
+  position: relative;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.analytics-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(89, 164, 255, 0.92), rgba(125, 207, 255, 0.92));
+}
+
+.analytics-bar-fill-accent {
+  background: linear-gradient(90deg, rgba(88, 204, 162, 0.92), rgba(126, 238, 192, 0.92));
+}
+
+.analytics-routes-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.analytics-route-table {
+  overflow: auto;
+}
+
+.analytics-route-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.analytics-route-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.analytics-route-rank {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(125, 207, 255, 0.12);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.analytics-route-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.analytics-route-main strong {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.analytics-route-count {
+  text-align: right;
+}
+
+.analytics-status {
+  margin-top: -2px;
+}
+
+.analytics-status-error {
+  color: #ffd7d0;
+}
+
 @keyframes selected-trip-enter {
   from {
     opacity: 0;
@@ -1078,6 +1375,7 @@ kbd {
   :root {
     --edge-inset: 12px;
     --attribution-height: 24px;
+    --right-panel-width: min(340px, calc(100vw - 260px));
   }
 
   .action-rail {
@@ -1103,14 +1401,28 @@ kbd {
     right: var(--edge-inset);
     bottom: auto;
     left: auto;
-    width: min(340px, calc(100vw - 260px));
   }
 
   .selected-trip-card {
-    top: 128px;
+    top: 160px;
     right: var(--edge-inset);
-    width: min(340px, calc(100vw - 260px));
     padding: 15px;
+  }
+
+  .analytics-shell {
+    top: 12px;
+    right: 12px;
+    bottom: 12px;
+    left: 260px;
+    padding: 14px;
+  }
+
+  .analytics-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .analytics-panels {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -1148,6 +1460,37 @@ kbd {
     bottom: 168px;
     left: 12px;
     width: auto;
+  }
+
+  .analytics-shell {
+    left: 12px;
+    top: 124px;
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  }
+
+  .analytics-header {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-range {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .analytics-bar-row {
+    grid-template-columns: 76px minmax(0, 1fr) auto;
+  }
+
+  .analytics-route-row {
+    grid-template-columns: auto 1fr;
+  }
+
+  .analytics-route-count {
+    grid-column: 2;
+    text-align: left;
   }
 
   .command-backdrop {

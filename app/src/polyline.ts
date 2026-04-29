@@ -39,5 +39,28 @@ export function timestampsForPath(path: [number, number][], startSeconds: number
   }
 
   const duration = Math.max(1, endSeconds - startSeconds);
-  return path.map((_, index) => startSeconds + (duration * index) / (path.length - 1));
+  const segmentDistances = path.slice(1).map((point, index) => distanceMeters(path[index], point));
+  const totalDistance = segmentDistances.reduce((sum, distance) => sum + distance, 0);
+  if (totalDistance <= 0) {
+    return path.map((_, index) => startSeconds + (duration * index) / (path.length - 1));
+  }
+
+  let elapsedDistance = 0;
+  return path.map((_, index) => {
+    if (index === 0) {
+      return startSeconds;
+    }
+    elapsedDistance += segmentDistances[index - 1];
+    return startSeconds + (duration * elapsedDistance) / totalDistance;
+  });
+}
+
+function distanceMeters(from: [number, number], to: [number, number]) {
+  const earthRadius = 6371000;
+  const lat1 = (from[1] * Math.PI) / 180;
+  const lat2 = (to[1] * Math.PI) / 180;
+  const dLat = ((to[1] - from[1]) * Math.PI) / 180;
+  const dLon = ((to[0] - from[0]) * Math.PI) / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return earthRadius * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }

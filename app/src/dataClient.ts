@@ -1,4 +1,6 @@
 import type {
+  AnalyticsLoadRequest,
+  AnalyticsLoadResponse,
   FilterState,
   ParkingStation,
   PublishedManifest,
@@ -31,9 +33,10 @@ export class TripDataClient {
   private worker = new Worker(new URL("./dataWorker.ts", import.meta.url), { type: "module" });
   private pendingTrips = new Map<string, (response: TripLoadResponse) => void>();
   private pendingStations = new Map<string, (response: StationLoadResponse) => void>();
+  private pendingAnalytics = new Map<string, (response: AnalyticsLoadResponse) => void>();
 
   constructor() {
-    this.worker.onmessage = (event: MessageEvent<TripLoadResponse | StationLoadResponse>) => {
+    this.worker.onmessage = (event: MessageEvent<TripLoadResponse | StationLoadResponse | AnalyticsLoadResponse>) => {
       const data = event.data;
       if (data.type === "tripsLoaded" || data.type === "loadError") {
         const resolver = this.pendingTrips.get(data.requestId);
@@ -47,6 +50,14 @@ export class TripDataClient {
         const resolver = this.pendingStations.get(data.requestId);
         if (resolver) {
           this.pendingStations.delete(data.requestId);
+          resolver(data);
+        }
+        return;
+      }
+      if (data.type === "analyticsLoaded" || data.type === "analyticsLoadError") {
+        const resolver = this.pendingAnalytics.get(data.requestId);
+        if (resolver) {
+          this.pendingAnalytics.delete(data.requestId);
           resolver(data);
         }
       }
@@ -95,9 +106,33 @@ export class TripDataClient {
     });
   }
 
+  loadAnalytics(params: {
+    dailyUrl: string;
+    hourlyUrl: string;
+    routesDailyUrl: string;
+    dateStart: string;
+    dateEnd: string;
+    filters: FilterState;
+    topRouteLimit?: number;
+  }): Promise<AnalyticsLoadResponse> {
+    const requestId = crypto.randomUUID();
+    const request: AnalyticsLoadRequest = {
+      type: "loadAnalytics",
+      requestId,
+      topRouteLimit: 10,
+      ...params
+    };
+
+    return new Promise((resolve) => {
+      this.pendingAnalytics.set(requestId, resolve);
+      this.worker.postMessage(request);
+    });
+  }
+
   dispose() {
     this.worker.terminate();
     this.pendingTrips.clear();
     this.pendingStations.clear();
+    this.pendingAnalytics.clear();
   }
 }

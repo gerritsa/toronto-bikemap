@@ -1,0 +1,23 @@
+[
+  {
+    "service_date": "2026-01-01",
+    "hour": 8,
+    "user_type": "Member",
+    "bike_category": "Classic",
+    "trip_count": 1
+  },
+  {
+    "service_date": "2026-01-01",
+    "hour": 8,
+    "user_type": "Casual",
+    "bike_category": "E-bike",
+    "trip_count": 2
+  },
+  {
+    "service_date": "2026-01-01",
+    "hour": 9,
+    "user_type": "Member",
+    "bike_category": "E-bike",
+    "trip_count": 1
+  }
+]

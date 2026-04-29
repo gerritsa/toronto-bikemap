@@ -11,6 +11,13 @@ export type PublishedManifest = {
     ridershipUrl: string;
     ridershipLastModified: string;
     ridershipSizeBytes?: number;
+    ridershipResources?: Array<{
+      year: number;
+      name: string;
+      url: string;
+      lastModified: string;
+      sizeBytes: number;
+    }>;
     dateMin: string;
     dateMax: string;
     tripCount: number;
@@ -20,6 +27,11 @@ export type PublishedManifest = {
     routesUrl: string;
     stationsUrl: string;
     basemapUrl: string;
+  };
+  analytics?: {
+    dailyUrl: string;
+    hourlyUrl: string;
+    routesDailyUrl: string;
   };
   filters: {
     userTypes: UserType[];
@@ -77,6 +89,60 @@ export type TripLoadResponse =
       message: string;
     };
 
+export type AnalyticsOverview = {
+  tripCount: number;
+  routeCount: number;
+  distanceMeters: number;
+  durationSeconds: number;
+  avgTripsPerDay: number;
+  dayCount: number;
+};
+
+export type AnalyticsDailyPoint = {
+  serviceDate: string;
+  tripCount: number;
+};
+
+export type AnalyticsHourlyPoint = {
+  hour: number;
+  tripCount: number;
+};
+
+export type AnalyticsTopRoute = {
+  routeId: string;
+  startStationName: string;
+  endStationName: string;
+  tripCount: number;
+  distanceMeters: number;
+};
+
+export type AnalyticsLoadRequest = {
+  type: "loadAnalytics";
+  requestId: string;
+  dailyUrl: string;
+  hourlyUrl: string;
+  routesDailyUrl: string;
+  dateStart: string;
+  dateEnd: string;
+  filters: FilterState;
+  topRouteLimit: number;
+};
+
+export type AnalyticsLoadResponse =
+  | {
+      type: "analyticsLoaded";
+      requestId: string;
+      overview: AnalyticsOverview;
+      daily: AnalyticsDailyPoint[];
+      hourly: AnalyticsHourlyPoint[];
+      topRoutes: AnalyticsTopRoute[];
+    }
+  | {
+      type: "analyticsLoadError";
+      requestId: string;
+      message: string;
+    };
+
 export type ParkingStation = {
   stationId: string;
   name: string;
@@ -102,5 +168,5 @@ export type StationLoadResponse =
       message: string;
     };
 
-export type WorkerInboundMessage = TripLoadRequest | StationLoadRequest;
-export type WorkerOutboundMessage = TripLoadResponse | StationLoadResponse;
+export type WorkerInboundMessage = TripLoadRequest | StationLoadRequest | AnalyticsLoadRequest;
+export type WorkerOutboundMessage = TripLoadResponse | StationLoadResponse | AnalyticsLoadResponse;

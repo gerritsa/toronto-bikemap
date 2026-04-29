@@ -1,6 +1,6 @@
 import pandas as pd
 
-from bikeshare_pipeline.normalize import bike_category, normalize_station_id, normalize_trips
+from bikeshare_pipeline.normalize import bike_category, normalize_bike_model, normalize_station_id, normalize_trips
 
 
 def test_normalize_station_id_strips_float_suffix():
@@ -12,6 +12,11 @@ def test_bike_category_mapping():
     assert bike_category("ICONIC") == "Classic"
     assert bike_category("EFIT") == "E-bike"
     assert bike_category("ASTRO") == "E-bike"
+    assert bike_category("EFIT G5") == "E-bike"
+
+
+def test_normalize_bike_model_maps_historical_aliases():
+    assert normalize_bike_model("EFIT G5") == "EFIT"
 
 
 def test_normalize_trips_handles_commas_and_same_station():
@@ -28,13 +33,14 @@ def test_normalize_trips_handles_commas_and_same_station():
                 "End_Station_Name": "Station, With Comma",
                 "Bike_Id": "1",
                 "User_Type": "Casual",
-                "Bike_Model": "ASTRO",
+                "Bike_Model": "EFIT G5",
             }
         ]
     )
     trips = normalize_trips(frame)
     assert bool(trips.iloc[0]["is_same_station"]) is True
     assert trips.iloc[0]["bike_category"] == "E-bike"
+    assert trips.iloc[0]["bike_model"] == "EFIT"
     assert trips.iloc[0]["route_id"].startswith("loop_")
 
 

@@ -1,51 +1,562 @@
 [
   {
-    "station_id": "7009",
-    "name": "King St E / Jarvis St",
+    "capacity": null,
     "lat": 43.65014,
     "lon": -79.37253,
-    "capacity": null
+    "name": "King St E / Jarvis St",
+    "station_id": "7009"
   },
   {
-    "station_id": "7067",
-    "name": "Yonge St / Lake Shore Blvd E",
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": [
+      [
+        "Elizabeth Street",
+        "Edward Street"
+      ]
+    ],
+    "lat": 43.6561213,
+    "lon": -79.3854844,
+    "matched_name": "Elizabeth Street / Edward Street",
+    "name": "Elizabeth St / Edward St (Bus Terminal)",
+    "resolution": "geocoded_intersection_exact",
+    "source": "generated_geocoder:overpass",
+    "station_id": "7012"
+  },
+  {
+    "capacity": null,
+    "confidence": "medium",
+    "geocode_query": [
+      [
+        "Simcoe Street",
+        "Queen Street West"
+      ]
+    ],
+    "lat": 43.6506538,
+    "lon": -79.38746875000001,
+    "matched_name": "Simcoe Street / Queen Street West",
+    "name": "Simcoe St / Queen St W",
+    "resolution": "geocoded_intersection_exact",
+    "source": "generated_geocoder:overpass",
+    "station_id": "7022"
+  },
+  {
+    "capacity": null,
     "lat": 43.6437,
     "lon": -79.376,
-    "capacity": null
+    "name": "Yonge St / Lake Shore Blvd E",
+    "station_id": "7067"
   },
   {
-    "station_id": "7083",
-    "name": "Danforth Ave / Barrington Ave",
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": "Blantyre Park, Toronto, Ontario, Canada",
+    "lat": 43.6831826,
+    "lon": -79.2805565,
+    "matched_name": "Blantyre Park, Scarborough Southwest, Scarborough, Toronto, Golden Horseshoe, Ontario, Canada",
+    "name": "Blantyre Park",
+    "resolution": "geocoded_place",
+    "source": "generated_geocoder:nominatim",
+    "station_id": "7068"
+  },
+  {
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": "Fleet St / Bathurst St, Toronto, Ontario, Canada",
+    "lat": 43.6368786,
+    "lon": -79.3999844,
+    "matched_name": "Fleet Street, Bathurst Street, Fort York-Liberty Village, Spadina\u2014Fort York, Toronto, Golden Horseshoe, Ontario, M5V 1B7, Canada",
+    "name": "Fleet St / Bathurst St",
+    "resolution": "geocoded_intersection",
+    "source": "generated_geocoder:nominatim",
+    "station_id": "7072"
+  },
+  {
+    "capacity": null,
     "lat": 43.68837,
     "lon": -79.30052,
-    "capacity": null
+    "name": "Danforth Ave / Barrington Ave",
+    "station_id": "7083"
   },
   {
-    "station_id": "7194",
-    "name": "Mortimer Ave / Coxwell Ave",
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": "Front St E / Cherry St, Toronto, Ontario, Canada",
+    "lat": 43.6528828,
+    "lon": -79.3580952,
+    "matched_name": "Front Street East, Cherry Street, St Lawrence-East Bayfront-The Islands, Toronto Centre, Toronto, Golden Horseshoe, Ontario, M5A 0H7, Canada",
+    "name": "Front St E / Cherry St",
+    "resolution": "geocoded_intersection",
+    "source": "generated_geocoder:nominatim",
+    "station_id": "7108"
+  },
+  {
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": [
+      [
+        "Queen Street West",
+        "Close Avenue"
+      ]
+    ],
+    "lat": 43.6407323,
+    "lon": -79.4359496,
+    "matched_name": "Queen Street West / Close Avenue",
+    "name": "Queen St W / Close Ave",
+    "resolution": "geocoded_intersection_exact",
+    "source": "generated_geocoder:overpass",
+    "station_id": "7136"
+  },
+  {
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": [
+      [
+        "Yonge Street",
+        "Wood Street"
+      ]
+    ],
+    "lat": 43.6620281,
+    "lon": -79.3833618,
+    "matched_name": "Yonge Street / Wood Street",
+    "name": "Yonge St / Wood St",
+    "resolution": "geocoded_intersection_exact",
+    "source": "generated_geocoder:overpass",
+    "station_id": "7163"
+  },
+  {
+    "capacity": null,
     "lat": 43.69061,
     "lon": -79.3261,
-    "capacity": null
+    "name": "Mortimer Ave / Coxwell Ave",
+    "station_id": "7194"
   },
   {
-    "station_id": "7355",
-    "name": "Beltline Trail / Chaplin Cres",
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": "Tecumseth St and Queen St W, Toronto, Ontario, Canada",
+    "lat": 43.6466203,
+    "lon": -79.4067893,
+    "matched_name": "Tecumseth Street, Queen Street West, West Queen West, Spadina\u2014Fort York, Toronto, Golden Horseshoe, Ontario, M6J 1E7, Canada",
+    "name": "Tecumseth St / Queen St W - SMART",
+    "resolution": "geocoded_intersection",
+    "source": "generated_geocoder:nominatim",
+    "station_id": "7245"
+  },
+  {
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": [
+      [
+        "Walton Street",
+        "Elizabeth Street"
+      ]
+    ],
+    "lat": 43.6577635,
+    "lon": -79.3861874,
+    "matched_name": "Walton Street / Elizabeth Street",
+    "name": "Walton St / Elizabeth St - SMART",
+    "resolution": "geocoded_intersection_exact",
+    "source": "generated_geocoder:overpass",
+    "station_id": "7263"
+  },
+  {
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": [
+      [
+        "Queen's Park Crescent East",
+        "Grosvenor Street"
+      ]
+    ],
+    "lat": 43.6617827,
+    "lon": -79.3898782,
+    "matched_name": "Queen's Park Crescent East / Grosvenor Street",
+    "name": "Queen's Park Cres E / Grosvenor St - SMART",
+    "resolution": "geocoded_intersection_exact",
+    "source": "generated_geocoder:overpass",
+    "station_id": "7274"
+  },
+  {
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": [
+      [
+        "Charles Street East",
+        "Jarvis Street"
+      ]
+    ],
+    "lat": 43.6699701,
+    "lon": -79.3798657,
+    "matched_name": "Charles Street East / Jarvis Street",
+    "name": "Charles St E / Jarvis St - SMART",
+    "resolution": "geocoded_intersection_exact",
+    "source": "generated_geocoder:overpass",
+    "station_id": "7280"
+  },
+  {
+    "capacity": 14,
+    "confidence": "high",
+    "lat": 43.674139,
+    "lon": -79.435611,
+    "matched_name": "Davenport Rd / Dovercourt Rd",
+    "name": "Davenport Rd / Dovercourt Rd - SMART",
+    "resolution": "suggested_match",
+    "source": "generated_suggested_match:8216",
+    "station_id": "7327"
+  },
+  {
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": [
+      [
+        "Roxborough Street West",
+        "Yonge Street"
+      ]
+    ],
+    "lat": 43.6782078,
+    "lon": -79.390041,
+    "matched_name": "Roxborough Street West / Yonge Street",
+    "name": "Roxborough St W / Yonge St",
+    "resolution": "geocoded_intersection_exact",
+    "source": "generated_geocoder:overpass",
+    "station_id": "7328"
+  },
+  {
+    "capacity": null,
     "lat": 43.70449,
     "lon": -79.42282,
-    "capacity": null
+    "name": "Beltline Trail / Chaplin Cres",
+    "station_id": "7355"
   },
   {
-    "station_id": "7443",
-    "name": "Dundas St E / George St",
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": "Merton St / Mount Pleasant Rd, Toronto, Ontario, Canada",
+    "lat": 43.6982903,
+    "lon": -79.3866137,
+    "matched_name": "Merton Street, Mount Pleasant Road, Mount Pleasant East, Don Valley West, Toronto, Golden Horseshoe, Ontario, M4S 2L5, Canada",
+    "name": "Merton St / Mount Pleasant Rd",
+    "resolution": "geocoded_intersection",
+    "source": "generated_geocoder:nominatim",
+    "station_id": "7424"
+  },
+  {
+    "capacity": null,
     "lat": 43.65757,
     "lon": -79.37346,
-    "capacity": null
+    "name": "Dundas St E / George St",
+    "station_id": "7443"
   },
   {
-    "station_id": "8146",
-    "name": "George St S / The Esplanade",
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": [
+      [
+        "St. Joseph Street",
+        "Bay Street"
+      ]
+    ],
+    "lat": 43.6656549,
+    "lon": -79.3876919,
+    "matched_name": "St. Joseph Street / Bay Street",
+    "name": "St. Joseph St / Bay St - SMART",
+    "resolution": "geocoded_intersection_exact",
+    "source": "generated_geocoder:overpass",
+    "station_id": "7548"
+  },
+  {
+    "capacity": null,
+    "lat": 43.72822665523488,
+    "lon": -79.40333791133126,
+    "name": "Yonge St / Woburn Ave - SMART",
+    "source": "manual_override",
+    "station_id": "7670"
+  },
+  {
+    "capacity": null,
+    "lat": 43.764563716686396,
+    "lon": -79.50139793633511,
+    "name": "Sentinel Rd / Finch Corridor Trail",
+    "source": "manual_override",
+    "station_id": "7585"
+  },
+  {
+    "capacity": null,
+    "lat": 43.76469374349723,
+    "lon": -79.49105712203335,
+    "name": "Finch West Subway Station",
+    "source": "manual_override",
+    "station_id": "7586"
+  },
+  {
+    "capacity": null,
+    "lat": 43.67897326740828,
+    "lon": -79.39045103876576,
+    "name": "Yonge St / Macpherson Ave",
+    "source": "manual_override",
+    "station_id": "7725"
+  },
+  {
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": "75 Holly St, Toronto, Ontario, Canada",
+    "lat": 43.7064576,
+    "lon": -79.3960093,
+    "matched_name": "Holly Park Garage, 75, Holly Street, South Eglinton-Davisville, Toronto\u2014St. Paul's, Toronto, Golden Horseshoe, Ontario, M4S 3C3, Canada",
+    "name": "75 Holly St",
+    "resolution": "geocoded_address",
+    "source": "generated_geocoder:nominatim",
+    "station_id": "7789"
+  },
+  {
+    "capacity": null,
+    "lat": 43.66930968389297,
+    "lon": -79.38258390281119,
+    "name": "Charles St / Church St - SMART",
+    "source": "manual_override",
+    "station_id": "7795"
+  },
+  {
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": [
+      [
+        "Greenwood Avenue",
+        "Sammon Avenue"
+      ]
+    ],
+    "lat": 43.6868697,
+    "lon": -79.3346706,
+    "matched_name": "Greenwood Avenue / Sammon Avenue",
+    "name": "Greenwood Ave / Sammon Ave",
+    "resolution": "geocoded_intersection_exact",
+    "source": "generated_geocoder:overpass",
+    "station_id": "7823"
+  },
+  {
+    "capacity": null,
+    "lat": 43.711223636587924,
+    "lon": -79.30688719152023,
+    "name": "Tiago Ave / Westview Blvd",
+    "source": "manual_override",
+    "station_id": "7829"
+  },
+  {
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": "Sentinel Rd / Finch Ave W, Toronto, Ontario, Canada",
+    "lat": 43.7608703,
+    "lon": -79.4998017,
+    "matched_name": "Sentinel Rd at Finch Avenue W, Sentinel Road, York University Heights, Humber River\u2014Black Creek, North York, Toronto, Golden Horseshoe, Ontario, M3J 1K6, Canada",
+    "name": "Sentinel Rd / Finch Ave W",
+    "resolution": "geocoded_intersection",
+    "source": "generated_geocoder:nominatim",
+    "station_id": "7873"
+  },
+  {
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": [
+      [
+        "Jane Street",
+        "Yewtree Boulevard"
+      ]
+    ],
+    "lat": 43.7548317,
+    "lon": -79.5170632,
+    "matched_name": "Jane Street / Yewtree Boulevard",
+    "name": "Jane St / Yewtree Blvd",
+    "resolution": "geocoded_intersection_exact",
+    "source": "generated_geocoder:overpass",
+    "station_id": "7876"
+  },
+  {
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": [
+      [
+        "Weston Road",
+        "Lanyard Road"
+      ]
+    ],
+    "lat": 43.7482736,
+    "lon": -79.5416041,
+    "matched_name": "Weston Road / Lanyard Road",
+    "name": "Weston Rd / Lanyard Rd",
+    "resolution": "geocoded_intersection_exact",
+    "source": "generated_geocoder:overpass",
+    "station_id": "7879"
+  },
+  {
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": "Tangiers Rd / Finch Ave W, Toronto, Ontario, Canada",
+    "lat": 43.7639104,
+    "lon": -79.4884763,
+    "matched_name": "Tangiers Road, Finch Avenue West, York University Heights, York Centre, North York, Toronto, Golden Horseshoe, Ontario, M3J 3K2, Canada",
+    "name": "Tangiers Rd / Finch Ave W",
+    "resolution": "geocoded_intersection",
+    "source": "generated_geocoder:nominatim",
+    "station_id": "7882"
+  },
+  {
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": "Jane St / Finch Ave W, Toronto, Ontario, Canada",
+    "lat": 43.7570761,
+    "lon": -79.5181844,
+    "matched_name": "Jane Street, Finch Avenue West, Glenfield-Jane Heights, Humber River\u2014Black Creek, North York, Toronto, Golden Horseshoe, Ontario, M3N 2K2, Canada",
+    "name": "Jane St / Finch Ave W",
+    "resolution": "geocoded_intersection",
+    "source": "generated_geocoder:nominatim",
+    "station_id": "7886"
+  },
+  {
+    "capacity": null,
+    "lat": 43.66222945409409,
+    "lon": -79.41278289770362,
+    "name": "Palmerston Blvd / Herrick St",
+    "source": "manual_override",
+    "station_id": "7905"
+  },
+  {
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": "Islington Ave / Finch Ave W, Toronto, Ontario, Canada",
+    "lat": 43.7458463,
+    "lon": -79.5683725,
+    "matched_name": "Islington Ave at Finch Ave W, Islington Avenue, Thistletown-Beaumond Heights, Etobicoke North, Etobicoke, Toronto, Golden Horseshoe, Ontario, M9V 1V9, Canada",
+    "name": "Islington Ave / Finch Ave W",
+    "resolution": "geocoded_intersection",
+    "source": "generated_geocoder:nominatim",
+    "station_id": "7921"
+  },
+  {
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": [
+      [
+        "Scrivener Square",
+        "Yonge Street"
+      ]
+    ],
+    "lat": 43.6805292,
+    "lon": -79.3909585,
+    "matched_name": "Scrivener Square / Yonge Street",
+    "name": "Scrivener Sq / Yonge St",
+    "resolution": "geocoded_intersection_exact",
+    "source": "generated_geocoder:overpass",
+    "station_id": "8019"
+  },
+  {
+    "capacity": 15,
+    "confidence": "high",
+    "lat": 43.66189,
+    "lon": -79.42679,
+    "matched_name": "Concord Ave / Bloor St W",
+    "name": "Concord Ave / Bloor St W (South)",
+    "resolution": "suggested_match",
+    "source": "generated_suggested_match:7437",
+    "station_id": "8024"
+  },
+  {
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": "Hanlan's Point Ferry Dock, Toronto Islands, Toronto, Ontario, Canada",
+    "lat": 43.6278868,
+    "lon": -79.3890669,
+    "matched_name": "Hanlan's Point Ferry Dock, Lakeshore Avenue, St Lawrence-East Bayfront-The Islands, Spadina\u2014Fort York, Toronto, Golden Horseshoe, Ontario, M5V 1A1, Canada",
+    "name": "Hanlan's Point Ferry Dock",
+    "resolution": "geocoded_place",
+    "source": "generated_geocoder:nominatim",
+    "station_id": "8027"
+  },
+  {
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": "Ward's Island Ferry Dock, Toronto, Ontario, Canada",
+    "lat": 43.6314263,
+    "lon": -79.3576392,
+    "matched_name": "Ward's Island Ferry Dock, Withrow Street, Ward's Island, Spadina\u2014Fort York, Toronto, Golden Horseshoe, Ontario, M5J 1Z4, Canada",
+    "name": "Ward's Island Ferry Dock",
+    "resolution": "geocoded_place",
+    "source": "generated_geocoder:nominatim",
+    "station_id": "8028"
+  },
+  {
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": "Hanlan's Point Beach, Toronto Islands, Toronto, Ontario, Canada",
+    "lat": 43.6172791,
+    "lon": -79.3912642,
+    "matched_name": "Queer History at Hanlan's Point, Beach Road, St Lawrence-East Bayfront-The Islands, Spadina\u2014Fort York, Toronto, Golden Horseshoe, Ontario, M5V 1A1, Canada",
+    "name": "Hanlan's Point Beach",
+    "resolution": "geocoded_place",
+    "source": "generated_geocoder:nominatim",
+    "station_id": "8029"
+  },
+  {
+    "capacity": null,
+    "lat": 43.62229898124939,
+    "lon": -79.37824233633481,
+    "name": "Centre Island Ferry Dock",
+    "source": "manual_override",
+    "station_id": "8030"
+  },
+  {
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": "Rogers Stadium, Toronto, Ontario, Canada",
+    "lat": 43.7461656,
+    "lon": -79.4692345,
+    "matched_name": "Rogers Stadium, Carl Hall Road, Downsview, York Centre, North York, Toronto, Golden Horseshoe, Ontario, M3K 2C9, Canada",
+    "name": "Rogers Stadium",
+    "resolution": "geocoded_place",
+    "source": "generated_geocoder:nominatim",
+    "station_id": "8067"
+  },
+  {
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": "Centre Island, Toronto, Ontario, Canada",
+    "lat": 43.6228766,
+    "lon": -79.3942999,
+    "matched_name": "Centre Island, Toronto, Golden Horseshoe, Ontario, Canada",
+    "name": "Centre Island",
+    "resolution": "geocoded_place",
+    "source": "generated_geocoder:nominatim",
+    "station_id": "8070"
+  },
+  {
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": "Gibraltar Point Beach, Toronto, Ontario, Canada",
+    "lat": 43.6127817,
+    "lon": -79.3814692,
+    "matched_name": "Gibraltar Point Beach, Spadina\u2014Fort York, Toronto, Golden Horseshoe, Ontario, Canada",
+    "name": "Gibraltar Point Beach",
+    "resolution": "geocoded_place",
+    "source": "generated_geocoder:nominatim",
+    "station_id": "8071"
+  },
+  {
+    "capacity": null,
+    "confidence": "high",
+    "geocode_query": "Wellesley Station, Toronto, Ontario, Canada",
+    "lat": 43.6653371,
+    "lon": -79.3839088,
+    "matched_name": "Wellesley Station, Wellesley Bus Terminal, Church-Wellesley, Toronto Centre, Toronto, Golden Horseshoe, Ontario, M4Y 1Z2, Canada",
+    "name": "Wellesley Station",
+    "resolution": "geocoded_place",
+    "source": "generated_geocoder:nominatim",
+    "station_id": "8072"
+  },
+  {
+    "capacity": null,
     "lat": 43.64836,
     "lon": -79.3698,
-    "capacity": null
+    "name": "George St S / The Esplanade",
+    "station_id": "8146"
   }
 ]

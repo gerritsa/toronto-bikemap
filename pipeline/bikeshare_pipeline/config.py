@@ -3,6 +3,13 @@ from __future__ import annotations
 CKAN_PACKAGE_URL = "https://ckan0.cf.opendata.inter.prod-toronto.ca/api/3/action/package_show?id=bike-share-toronto-ridership-data"
 GBFS_STATION_INFORMATION_URL = "https://tor.publicbikesystem.net/ube/gbfs/v1/en/station_information"
 
+BIKE_MODEL_ALIASES = {
+    "ICONIC": "ICONIC",
+    "EFIT": "EFIT",
+    "EFIT G5": "EFIT",
+    "ASTRO": "ASTRO",
+}
+
 BIKE_CATEGORIES = {
     "ICONIC": "Classic",
     "EFIT": "E-bike",

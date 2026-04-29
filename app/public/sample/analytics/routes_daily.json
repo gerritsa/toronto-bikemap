@@ -1,0 +1,42 @@
+[
+  {
+    "service_date": "2026-01-01",
+    "user_type": "Member",
+    "bike_category": "Classic",
+    "route_id": "r_7000_7001",
+    "start_station_name": "Fort York Blvd / Capreol Ct",
+    "end_station_name": "Wellington St W / Portland St",
+    "trip_count": 1,
+    "distance_meters": 720
+  },
+  {
+    "service_date": "2026-01-01",
+    "user_type": "Member",
+    "bike_category": "E-bike",
+    "route_id": "r_7000_7001",
+    "start_station_name": "Fort York Blvd / Capreol Ct",
+    "end_station_name": "Wellington St W / Portland St",
+    "trip_count": 1,
+    "distance_meters": 720
+  },
+  {
+    "service_date": "2026-01-01",
+    "user_type": "Casual",
+    "bike_category": "E-bike",
+    "route_id": "r_7001_7002",
+    "start_station_name": "Wellington St W / Portland St",
+    "end_station_name": "St George St / Bloor St W",
+    "trip_count": 1,
+    "distance_meters": 930
+  },
+  {
+    "service_date": "2026-01-01",
+    "user_type": "Casual",
+    "bike_category": "E-bike",
+    "route_id": "r_loop_7000",
+    "start_station_name": "Fort York Blvd / Capreol Ct",
+    "end_station_name": "Fort York Blvd / Capreol Ct",
+    "trip_count": 1,
+    "distance_meters": 1600
+  }
+]

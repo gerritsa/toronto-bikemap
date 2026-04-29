@@ -1,0 +1,29 @@
+[
+  {
+    "service_date": "2026-01-01",
+    "user_type": "Member",
+    "bike_category": "Classic",
+    "trip_count": 1,
+    "route_count": 1,
+    "distance_meters_sum": 720,
+    "duration_seconds_sum": 720
+  },
+  {
+    "service_date": "2026-01-01",
+    "user_type": "Member",
+    "bike_category": "E-bike",
+    "trip_count": 1,
+    "route_count": 1,
+    "distance_meters_sum": 720,
+    "duration_seconds_sum": 540
+  },
+  {
+    "service_date": "2026-01-01",
+    "user_type": "Casual",
+    "bike_category": "E-bike",
+    "trip_count": 2,
+    "route_count": 2,
+    "distance_meters_sum": 2530,
+    "duration_seconds_sum": 2880
+  }
+]
