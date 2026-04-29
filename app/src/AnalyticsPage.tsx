@@ -54,10 +54,25 @@ function formatDistance(distanceMeters: number) {
 
 function formatDuration(durationSeconds: number) {
   const totalMinutes = Math.round(durationSeconds / 60);
+  const totalHours = totalMinutes / 60;
+  const totalDays = totalHours / 24;
+
+  if (totalDays >= 365) {
+    const years = totalDays / 365;
+    return `${years.toFixed(years >= 10 ? 0 : 1)} yrs`;
+  }
+  if (totalDays >= 30) {
+    const months = totalDays / 30;
+    return `${months.toFixed(months >= 10 ? 0 : 1)} mo`;
+  }
+  if (totalDays >= 7) {
+    const weeks = totalDays / 7;
+    return `${weeks.toFixed(weeks >= 10 ? 0 : 1)} wks`;
+  }
   if (totalMinutes >= 60) {
-    const hours = Math.floor(totalMinutes / 60);
+    const hours = Math.floor(totalHours);
     const minutes = totalMinutes % 60;
-    return `${hours}h ${String(minutes).padStart(2, "0")}m`;
+    return minutes ? `${hours}h ${String(minutes).padStart(2, "0")}m` : `${hours}h`;
   }
   return `${totalMinutes} min`;
 }
@@ -71,15 +86,6 @@ function chartBarWidth(value: number, maxValue: number) {
 
 function topDailyPoint(daily: AnalyticsDailyPoint[]) {
   return daily.reduce<AnalyticsDailyPoint | null>((best, row) => {
-    if (!best || row.tripCount > best.tripCount) {
-      return row;
-    }
-    return best;
-  }, null);
-}
-
-function topHourlyPoint(hourly: AnalyticsHourlyPoint[]) {
-  return hourly.reduce<AnalyticsHourlyPoint | null>((best, row) => {
     if (!best || row.tripCount > best.tripCount) {
       return row;
     }
@@ -103,7 +109,6 @@ export function AnalyticsPage({ manifest, filters, dataClient }: AnalyticsPagePr
   const dailyMax = useMemo(() => analytics.daily.reduce((max, row) => Math.max(max, row.tripCount), 0), [analytics.daily]);
   const hourlyMax = useMemo(() => analytics.hourly.reduce((max, row) => Math.max(max, row.tripCount), 0), [analytics.hourly]);
   const peakDay = useMemo(() => topDailyPoint(analytics.daily), [analytics.daily]);
-  const peakHour = useMemo(() => topHourlyPoint(analytics.hourly), [analytics.hourly]);
 
   useEffect(() => {
     if (!manifest?.analytics || !dataClient || !range.dateStart || !range.dateEnd) {
@@ -240,6 +245,14 @@ export function AnalyticsPage({ manifest, filters, dataClient }: AnalyticsPagePr
           <strong>{peakDay ? peakDay.tripCount.toLocaleString() : "0"}</strong>
           <p>{peakDay ? formatDateLabel(peakDay.serviceDate) : "No daily data"}</p>
         </article>
+        <article className="analytics-card">
+          <span className="analytics-card-label">
+            <BarChart3 size={16} />
+            Average day
+          </span>
+          <strong>{Math.round(analytics.overview.avgTripsPerDay).toLocaleString()}</strong>
+          <p>Trips per day</p>
+        </article>
       </div>
 
       <div className="analytics-panels">
@@ -289,31 +302,6 @@ export function AnalyticsPage({ manifest, filters, dataClient }: AnalyticsPagePr
           </div>
         </section>
       </div>
-
-      <section className="analytics-panel analytics-snapshot-panel">
-        <div className="analytics-panel-header">
-          <h2>Range snapshot</h2>
-          <span>Lean analytics</span>
-        </div>
-        <div className="analytics-snapshot-grid">
-          <div className="analytics-snapshot-item">
-            <span>Average day</span>
-            <strong>{analytics.overview.avgTripsPerDay.toFixed(1)} trips</strong>
-          </div>
-          <div className="analytics-snapshot-item">
-            <span>Busiest hour</span>
-            <strong>{peakHour ? `${formatHourLabel(peakHour.hour)} (${peakHour.tripCount.toLocaleString()})` : "No hourly data"}</strong>
-          </div>
-          <div className="analytics-snapshot-item">
-            <span>Rider types</span>
-            <strong>{filters.userTypes.join(", ")}</strong>
-          </div>
-          <div className="analytics-snapshot-item">
-            <span>Bike mix</span>
-            <strong>{filters.bikeCategories.join(", ")}</strong>
-          </div>
-        </div>
-      </section>
 
       {loadState === "loading" && <p className="analytics-status">Loading analytics…</p>}
       {loadState === "error" && (

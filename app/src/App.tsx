@@ -395,6 +395,7 @@ export default function App() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchMode, setSearchMode] = useState<SearchMode>("time");
   const [searchQuery, setSearchQuery] = useState("");
+  const [areMobileControlsOpen, setAreMobileControlsOpen] = useState(false);
 
   stationSelectHandlerRef.current = (payload) => {
     if (!tripClickHandledRef.current) {
@@ -943,140 +944,151 @@ export default function App() {
     <main className={selectedTrip ? "app-shell selected-mode" : "app-shell"}>
       {activeView === "map" ? <div ref={mapContainerRef} className="map" /> : <div className="analytics-backdrop" />}
 
-      <aside className="action-rail" aria-label="Bike Share flow controls">
+      <aside className={areMobileControlsOpen ? "action-rail mobile-open" : "action-rail"} aria-label="Bike Share flow controls">
         <div className="rail-meta">
           <span className="rail-brand">Toronto Bike Share</span>
           <span className={`status-pill status-${loadState}`}>{formatLoadState(loadState)}</span>
-        </div>
-
-        <div className="rail-segmented" role="tablist" aria-label="View mode">
           <button
             type="button"
-            className={activeView === "map" ? "rail-segment active" : "rail-segment"}
-            onClick={() => setActiveView("map")}
+            className="rail-collapse-toggle"
+            aria-expanded={areMobileControlsOpen}
+            onClick={() => setAreMobileControlsOpen((value) => !value)}
           >
-            <Bike size={16} />
-            Map
-          </button>
-          <button
-            type="button"
-            className={activeView === "analytics" ? "rail-segment active" : "rail-segment"}
-            onClick={() => {
-              setActiveView("analytics");
-              setSelectedTrip(null);
-              setIsSearchOpen(false);
-            }}
-          >
-            <BarChart3 size={16} />
-            Analytics
+            <SlidersHorizontal size={16} />
+            Controls
           </button>
         </div>
 
-        {activeView === "map" && (
-          <>
-            <button type="button" className="rail-control rail-search" onClick={() => openSearch("ride")}>
-              <span className="rail-main">
-                <Search size={18} />
-                Find ride
-              </span>
-              <kbd>⌘K</kbd>
+        <div className="rail-collapsible-content">
+          <div className="rail-segmented" role="tablist" aria-label="View mode">
+            <button
+              type="button"
+              className={activeView === "map" ? "rail-segment active" : "rail-segment"}
+              onClick={() => setActiveView("map")}
+            >
+              <Bike size={16} />
+              Map
             </button>
-
-            <label className="rail-control rail-select">
-              <span className="rail-main">
-                <CalendarDays size={18} />
-                <select value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} disabled={!availableDates.length}>
-                  {availableDates.map((date) => (
-                    <option key={date} value={date}>
-                      {date}
-                    </option>
-                  ))}
-                </select>
-              </span>
-            </label>
-
-            <button type="button" className="rail-control rail-control-primary" onClick={() => setIsPlaying((value) => !value)}>
-              <span className="rail-main">
-                {isPlaying ? <Pause size={18} /> : <Play size={18} />}
-                {isPlaying ? "Pause" : "Play"}
-              </span>
-              <kbd>Space</kbd>
+            <button
+              type="button"
+              className={activeView === "analytics" ? "rail-segment active" : "rail-segment"}
+              onClick={() => {
+                setActiveView("analytics");
+                setSelectedTrip(null);
+                setIsSearchOpen(false);
+              }}
+            >
+              <BarChart3 size={16} />
+              Analytics
             </button>
+          </div>
 
-            <div className="rail-row">
-              <label className="rail-control rail-control-compact rail-select">
+          {activeView === "map" && (
+            <>
+              <button type="button" className="rail-control rail-search" onClick={() => openSearch("ride")}>
                 <span className="rail-main">
-                  <SlidersHorizontal size={17} />
-                  <select value={speed} onChange={(event) => setSpeed(Number(event.target.value))}>
-                    {SPEEDS.map((value) => (
-                      <option key={value} value={value}>
-                        {value}x
+                  <Search size={18} />
+                  Find ride
+                </span>
+                <kbd>⌘K</kbd>
+              </button>
+
+              <label className="rail-control rail-select">
+                <span className="rail-main">
+                  <CalendarDays size={18} />
+                  <select value={selectedDate} onChange={(event) => setSelectedDate(event.target.value)} disabled={!availableDates.length}>
+                    {availableDates.map((date) => (
+                      <option key={date} value={date}>
+                        {date}
                       </option>
                     ))}
                   </select>
                 </span>
               </label>
 
-              <button type="button" className="rail-control rail-control-compact" onClick={() => setIsFiltersOpen((value) => !value)}>
+              <button type="button" className="rail-control rail-control-primary" onClick={() => setIsPlaying((value) => !value)}>
                 <span className="rail-main">
-                  <SlidersHorizontal size={17} />
-                  Filters
+                  {isPlaying ? <Pause size={18} /> : <Play size={18} />}
+                  {isPlaying ? "Pause" : "Play"}
                 </span>
-                <kbd>F</kbd>
+                <kbd>Space</kbd>
               </button>
-            </div>
-          </>
-        )}
 
-        {activeView === "analytics" && (
-          <button type="button" className="rail-control" onClick={() => setIsFiltersOpen((value) => !value)}>
-            <span className="rail-main">
-              <SlidersHorizontal size={17} />
-              Filters
-            </span>
-            <kbd>F</kbd>
-          </button>
-        )}
+              <div className="rail-row">
+                <label className="rail-control rail-control-compact rail-select">
+                  <span className="rail-main">
+                    <SlidersHorizontal size={17} />
+                    <select value={speed} onChange={(event) => setSpeed(Number(event.target.value))}>
+                      {SPEEDS.map((value) => (
+                        <option key={value} value={value}>
+                          {value}x
+                        </option>
+                      ))}
+                    </select>
+                  </span>
+                </label>
 
-        {isFiltersOpen && (
-          <div className="filter-drawer">
-            <div className="filter-drawer-header">
-              <h2>Filters</h2>
-            </div>
+                <button type="button" className="rail-control rail-control-compact" onClick={() => setIsFiltersOpen((value) => !value)}>
+                  <span className="rail-main">
+                    <SlidersHorizontal size={17} />
+                    Filters
+                  </span>
+                  <kbd>F</kbd>
+                </button>
+              </div>
+            </>
+          )}
 
-            <div className="filter-block">
-              <h3>Rider type</h3>
-              <div className="chip-row">
-                {(["Member", "Casual"] as UserType[]).map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    className={filters.userTypes.includes(value) ? "chip active" : "chip"}
-                    onClick={() => setUserType(value)}
-                  >
-                    {value}
-                  </button>
-                ))}
+          {activeView === "analytics" && (
+            <button type="button" className="rail-control" onClick={() => setIsFiltersOpen((value) => !value)}>
+              <span className="rail-main">
+                <SlidersHorizontal size={17} />
+                Filters
+              </span>
+              <kbd>F</kbd>
+            </button>
+          )}
+
+          {isFiltersOpen && (
+            <div className="filter-drawer">
+              <div className="filter-drawer-header">
+                <h2>Filters</h2>
+              </div>
+
+              <div className="filter-block">
+                <h3>Rider type</h3>
+                <div className="chip-row">
+                  {(["Member", "Casual"] as UserType[]).map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      className={filters.userTypes.includes(value) ? "chip active" : "chip"}
+                      onClick={() => setUserType(value)}
+                    >
+                      {value}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="filter-block">
+                <h3>Bike class</h3>
+                <div className="chip-row">
+                  {(["Classic", "E-bike"] as BikeCategory[]).map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      className={filters.bikeCategories.includes(value) ? "chip active" : "chip"}
+                      onClick={() => setBikeCategory(value)}
+                    >
+                      {value}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-
-            <div className="filter-block">
-              <h3>Bike class</h3>
-              <div className="chip-row">
-                {(["Classic", "E-bike"] as BikeCategory[]).map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    className={filters.bikeCategories.includes(value) ? "chip active" : "chip"}
-                    onClick={() => setBikeCategory(value)}
-                  >
-                    {value}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </aside>
 
       {activeView === "map" ? (
