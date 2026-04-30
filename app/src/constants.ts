@@ -3,7 +3,7 @@ import type { FilterState } from "./types";
 export const TORONTO_VIEW_STATE = {
   longitude: -79.3832,
   latitude: 43.6532,
-  zoom: 12,
+  zoom: 13,
   bearing: 0,
   pitch: 0
 };

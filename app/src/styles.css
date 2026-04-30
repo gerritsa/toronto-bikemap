@@ -255,6 +255,7 @@ p {
 .action-rail,
 .stream-panel,
 .timeline-dock,
+.map-legend,
 .selected-trip-card,
 .error-toast {
   position: absolute;
@@ -777,6 +778,60 @@ kbd {
   letter-spacing: -0.02em;
 }
 
+.map-legend {
+  left: 50%;
+  bottom: calc(var(--attribution-height) + 26px);
+  display: flex;
+  max-width: min(760px, calc(100vw - 36px));
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  transform: translateX(-50%);
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 18px;
+  background: rgba(5, 7, 10, 0.72);
+  padding: 10px 14px;
+  box-shadow: var(--shadow-strong);
+  backdrop-filter: blur(18px) saturate(1.06);
+}
+
+.map-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-strong);
+  font-size: 13px;
+  font-weight: 520;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.map-legend-arrow {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  clip-path: polygon(6% 20%, 94% 50%, 58% 62%, 43% 96%, 30% 58%);
+  transform: rotate(-8deg);
+}
+
+.legend-e-bike {
+  background: rgb(98, 202, 255);
+}
+
+.legend-classic-bike {
+  background: rgb(180, 128, 255);
+}
+
+.legend-bike-unlocked {
+  background: rgb(78, 222, 132);
+}
+
+.legend-bike-docked {
+  background: rgb(255, 112, 145);
+}
+
 .command-backdrop {
   position: fixed;
   inset: 0;
@@ -789,6 +844,8 @@ kbd {
 }
 
 .command-panel {
+  display: grid;
+  max-height: min(760px, calc(100dvh - 96px));
   width: min(760px, calc(100vw - 36px));
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.095);
@@ -800,29 +857,19 @@ kbd {
   color: var(--text);
 }
 
-.command-tabs {
+.command-header {
   display: grid;
-  grid-template-columns: auto auto 1fr;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
-  padding: 14px 18px;
+  gap: 12px;
+  padding: 16px 18px;
 }
 
-.command-tab {
-  min-height: 32px;
-  border: 1px solid transparent;
-  border-radius: 12px;
-  background: transparent;
-  padding: 0 10px;
-  color: var(--muted-strong);
-  font-size: 12px;
-  font-weight: 520;
-}
-
-.command-tab.active {
-  border-color: rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.065);
+.command-header strong {
   color: var(--text);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
 }
 
 .command-close {
@@ -880,10 +927,65 @@ kbd {
   color: rgba(216, 223, 234, 0.52);
 }
 
+.command-starters,
+.command-understood {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 12px 20px;
+}
+
+.command-chip,
+.command-understood span {
+  min-height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.085);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0 10px;
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 560;
+  letter-spacing: -0.01em;
+}
+
+.command-chip:hover,
+.command-chip:focus-visible {
+  outline: none;
+  border-color: rgba(125, 207, 255, 0.2);
+  background: rgba(125, 207, 255, 0.08);
+  color: var(--text);
+}
+
+.command-understood span {
+  display: inline-flex;
+  align-items: center;
+  color: var(--muted);
+}
+
 .command-results {
   display: grid;
   gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 16px 20px 20px;
+}
+
+.command-results::-webkit-scrollbar {
+  width: 10px;
+}
+
+.command-results::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: rgba(216, 223, 234, 0.22);
+  background-clip: content-box;
+}
+
+.command-results::-webkit-scrollbar-thumb:hover {
+  background: rgba(216, 223, 234, 0.34);
+  background-clip: content-box;
 }
 
 .command-primary-result,
@@ -909,6 +1011,8 @@ kbd {
 }
 
 .command-primary-result:not(:disabled):hover,
+.command-primary-result.active,
+.command-ride-result.active,
 .command-ride-result:hover,
 .command-ride-result:focus-visible {
   outline: none;
@@ -1511,6 +1615,20 @@ kbd {
     padding: 12px 14px;
   }
 
+  .map-legend {
+    right: 12px;
+    bottom: 210px;
+    left: 12px;
+    max-width: none;
+    justify-content: flex-start;
+    gap: 10px 14px;
+    transform: none;
+  }
+
+  .map-legend-item {
+    font-size: 12px;
+  }
+
   .selected-trip-card {
     top: auto;
     right: 12px;
@@ -1558,12 +1676,12 @@ kbd {
   }
 
   .command-panel {
+    max-height: calc(100dvh - 24px);
     width: 100%;
     border-radius: 22px;
   }
 
-  .command-tabs {
-    grid-template-columns: 1fr 1fr auto;
+  .command-header {
     padding: 14px;
   }
 
@@ -1573,6 +1691,11 @@ kbd {
 
   .command-input-row input {
     font-size: 15px;
+  }
+
+  .command-starters,
+  .command-understood {
+    padding: 12px 16px;
   }
 
   .command-ride-result {

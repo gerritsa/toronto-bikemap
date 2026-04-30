@@ -39,18 +39,40 @@ type StationPopup = {
   stationId: string;
 };
 type MapPopup = StationPopup;
-type SearchMode = "time" | "ride";
 type AppView = "map" | "analytics";
 type RideSearchMatch = {
   trip: FlowTrip;
   score: number;
 };
+type TextRange = {
+  start: number;
+  end: number;
+};
+type SearchDateParse = {
+  date: string | null;
+  ranges: TextRange[];
+};
+type CommandResult =
+  | {
+      id: string;
+      type: "time";
+    }
+  | {
+      id: string;
+      type: "ride";
+      trip: FlowTrip;
+    };
 
-const TRIP_TRAIL_LENGTH_SECONDS = 420;
+const TRIP_TRAIL_LENGTH_SECONDS = 300;
 const FINISH_BURST_MS = 1100;
+const MAX_RIDE_SEARCH_RESULTS = 40;
 const DEFAULT_SELECTED_DATE = "2026-01-01";
 const DEFAULT_START_SECONDS = 0;
 const SELECTED_ROUTE_COLOR: [number, number, number, number] = [255, 255, 255, 245];
+const E_BIKE_COLOR: [number, number, number] = [98, 202, 255];
+const CLASSIC_BIKE_COLOR: [number, number, number] = [180, 128, 255];
+const BIKE_UNLOCKED_COLOR: [number, number, number] = [78, 222, 132];
+const BIKE_DOCKED_COLOR: [number, number, number] = [255, 112, 145];
 
 const ARROW_ICON_ATLAS =
   `data:image/svg+xml;base64,${btoa(`
@@ -131,9 +153,9 @@ function formatDateLabel(dateString: string) {
 
 function tripColor(trip: FlowTrip): [number, number, number] {
   if (trip.bikeCategory === "E-bike") {
-    return [47, 142, 201];
+    return E_BIKE_COLOR;
   }
-  return [14, 124, 102];
+  return CLASSIC_BIKE_COLOR;
 }
 
 function distanceMeters(from: [number, number], to: [number, number]) {
@@ -224,16 +246,104 @@ function normalizeSearchText(value: string) {
     .trim();
 }
 
-function parseSearchDate(query: string, availableDates: string[]) {
-  const isoDate = query.match(/\b20\d{2}-\d{2}-\d{2}\b/)?.[0];
-  if (isoDate && availableDates.includes(isoDate)) {
-    return isoDate;
-  }
-  return null;
+const MONTH_NUMBER_BY_NAME = new Map<string, number>([
+  ["jan", 1],
+  ["january", 1],
+  ["feb", 2],
+  ["february", 2],
+  ["mar", 3],
+  ["march", 3],
+  ["apr", 4],
+  ["april", 4],
+  ["may", 5],
+  ["jun", 6],
+  ["june", 6],
+  ["jul", 7],
+  ["july", 7],
+  ["aug", 8],
+  ["august", 8],
+  ["sep", 9],
+  ["sept", 9],
+  ["september", 9],
+  ["oct", 10],
+  ["october", 10],
+  ["nov", 11],
+  ["november", 11],
+  ["dec", 12],
+  ["december", 12]
+]);
+
+function formatSearchDate(year: number, month: number, day: number) {
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
-function parseSearchTime(query: string) {
-  const match = query.match(/\b(\d{1,2})(?::(\d{2}))?(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\b/i);
+function isValidCalendarDate(year: number, month: number, day: number) {
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+}
+
+function availableDateForParts(availableDates: string[], month: number, day: number, year?: number) {
+  const candidates = availableDates.filter((date) => {
+    const [candidateYear, candidateMonth, candidateDay] = date.split("-").map(Number);
+    return candidateMonth === month && candidateDay === day && (year === undefined || candidateYear === year);
+  });
+  return candidates.at(-1) ?? null;
+}
+
+function parseSearchDate(query: string, availableDates: string[]): SearchDateParse {
+  const ranges: TextRange[] = [];
+  const isoDateMatch = /\b(20\d{2})-(\d{1,2})-(\d{1,2})\b/.exec(query);
+  if (isoDateMatch?.index !== undefined) {
+    ranges.push({ start: isoDateMatch.index, end: isoDateMatch.index + isoDateMatch[0].length });
+    const year = Number(isoDateMatch[1]);
+    const month = Number(isoDateMatch[2]);
+    const day = Number(isoDateMatch[3]);
+    const date = formatSearchDate(year, month, day);
+    return { date: isValidCalendarDate(year, month, day) && availableDates.includes(date) ? date : null, ranges };
+  }
+
+  const numericDateMatch = /\b(\d{1,2})\/(\d{1,2})(?:\/(20\d{2}))?\b/.exec(query);
+  if (numericDateMatch?.index !== undefined) {
+    ranges.push({ start: numericDateMatch.index, end: numericDateMatch.index + numericDateMatch[0].length });
+    const month = Number(numericDateMatch[1]);
+    const day = Number(numericDateMatch[2]);
+    const year = numericDateMatch[3] ? Number(numericDateMatch[3]) : undefined;
+    return { date: availableDateForParts(availableDates, month, day, year), ranges };
+  }
+
+  const monthPattern = Array.from(MONTH_NUMBER_BY_NAME.keys()).join("|");
+  const namedDateMatch = new RegExp(
+    `\\b(${monthPattern})\\.?\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s+(20\\d{2}))?\\b`,
+    "i"
+  ).exec(query);
+  if (namedDateMatch?.index !== undefined) {
+    ranges.push({ start: namedDateMatch.index, end: namedDateMatch.index + namedDateMatch[0].length });
+    const month = MONTH_NUMBER_BY_NAME.get(namedDateMatch[1].toLowerCase().replace(".", "")) ?? 0;
+    const day = Number(namedDateMatch[2]);
+    const year = namedDateMatch[3] ? Number(namedDateMatch[3]) : undefined;
+    return { date: availableDateForParts(availableDates, month, day, year), ranges };
+  }
+
+  return { date: null, ranges };
+}
+
+function isInTextRanges(index: number, ranges: TextRange[]) {
+  return ranges.some((range) => index >= range.start && index < range.end);
+}
+
+function textOutsideRanges(value: string, ranges: TextRange[]) {
+  if (!ranges.length) {
+    return value;
+  }
+  return value
+    .split("")
+    .map((character, index) => (isInTextRanges(index, ranges) ? " " : character))
+    .join("");
+}
+
+function parseSearchTime(query: string, ignoredRanges: TextRange[] = []) {
+  const matches = Array.from(query.matchAll(/\b(\d{1,2})(?::(\d{2}))?(?::(\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?\b/gi));
+  const match = matches.find((candidate) => !isInTextRanges(candidate.index ?? -1, ignoredRanges));
   if (!match) {
     return null;
   }
@@ -262,37 +372,96 @@ function parseSearchTime(query: string) {
 }
 
 function stationSearchTokens(query: string) {
-  const ignored = new Set(["am", "pm", "at", "to", "from", "ride", "trip", "start", "started", "when", "did", "this"]);
+  const ignored = new Set([
+    "am",
+    "pm",
+    "at",
+    "bike",
+    "date",
+    "find",
+    "from",
+    "jump",
+    "open",
+    "ride",
+    "search",
+    "start",
+    "started",
+    "station",
+    "the",
+    "this",
+    "time",
+    "to",
+    "trip",
+    "when"
+  ]);
   return normalizeSearchText(query)
     .split(" ")
     .filter((token) => token.length > 1 && !ignored.has(token) && !/^\d+$/.test(token));
 }
 
-function tokenHits(tokens: string[], text: string) {
-  const normalized = normalizeSearchText(text);
-  return tokens.reduce((score, token) => score + (normalized.includes(token) ? 1 : 0), 0);
+function normalizeStationSearchText(value: string) {
+  return normalizeSearchText(value)
+    .split(" ")
+    .map((token) => {
+      if (["st", "str"].includes(token)) {
+        return "street";
+      }
+      if (["ave", "av"].includes(token)) {
+        return "avenue";
+      }
+      if (["rd"].includes(token)) {
+        return "road";
+      }
+      if (["dr"].includes(token)) {
+        return "drive";
+      }
+      if (["blvd"].includes(token)) {
+        return "boulevard";
+      }
+      return token;
+    })
+    .join(" ");
 }
 
-function rideSearchMatches(query: string, trips: FlowTrip[], currentTime: number): RideSearchMatch[] {
-  const tokens = stationSearchTokens(query);
-  const searchedTime = parseSearchTime(query);
+function tokenHits(tokens: string[], text: string) {
+  const normalized = normalizeStationSearchText(text);
+  return tokens.reduce((score, token) => {
+    if (normalized.includes(token)) {
+      return score + 1;
+    }
+    return score + (normalized.split(" ").some((word) => word.startsWith(token) || token.startsWith(word)) ? 0.45 : 0);
+  }, 0);
+}
+
+function rideSearchMatches(
+  query: string,
+  trips: FlowTrip[],
+  currentTime: number,
+  searchedTime: number | null,
+  ignoredRanges: TextRange[] = []
+): RideSearchMatch[] {
+  const tokens = stationSearchTokens(textOutsideRanges(query, ignoredRanges)).map((token) => normalizeStationSearchText(token));
   if (!tokens.length && searchedTime === null) {
     return [];
   }
 
   return trips
     .map((trip) => {
-      const stationScore = tokenHits(tokens, `${trip.startStationName} ${trip.endStationName}`);
+      const startScore = tokenHits(tokens, trip.startStationName);
+      const endScore = tokenHits(tokens, trip.endStationName);
+      const stationScore = startScore + endScore;
+      const routeScore = startScore > 0 && endScore > 0 ? 1.5 : 0;
       const timeDistance = Math.abs((searchedTime ?? currentTime) - trip.startSeconds);
-      const timeScore = searchedTime === null ? 0 : Math.max(0, 4 - timeDistance / 900);
+      const activeAtSearchedTime = searchedTime !== null && trip.startSeconds <= searchedTime && trip.endSeconds >= searchedTime;
+      const timeScore = searchedTime === null ? 0 : Math.max(0, 4 - timeDistance / 900) + (activeAtSearchedTime ? 1.25 : 0);
       return {
         trip,
-        score: stationScore * 2 + timeScore
+        score: stationScore * 2 + routeScore + timeScore
       };
     })
     .filter((match) => match.score > 0)
     .sort((a, b) => b.score - a.score || Math.abs(a.trip.startSeconds - currentTime) - Math.abs(b.trip.startSeconds - currentTime))
-    .slice(0, 6);
+    .slice(0, MAX_RIDE_SEARCH_RESULTS);
 }
 
 function pickedFlowTrip(object: unknown): FlowTrip | null {
@@ -393,8 +562,8 @@ export default function App() {
   const [selectedTrip, setSelectedTrip] = useState<FlowTrip | null>(null);
   const [finishBursts, setFinishBursts] = useState<FinishBurst[]>([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [searchMode, setSearchMode] = useState<SearchMode>("time");
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeCommandIndex, setActiveCommandIndex] = useState(0);
   const [areMobileControlsOpen, setAreMobileControlsOpen] = useState(false);
 
   stationSelectHandlerRef.current = (payload) => {
@@ -413,9 +582,31 @@ export default function App() {
   const detailedClock = useMemo(() => formatClockWithSeconds(currentTime), [currentTime]);
   const formattedDateLabel = useMemo(() => formatDateLabel(selectedDate), [selectedDate]);
   const timelineClock = useMemo(() => formatClockWithSeconds(currentTime), [currentTime]);
-  const parsedSearchTime = useMemo(() => parseSearchTime(searchQuery), [searchQuery]);
   const parsedSearchDate = useMemo(() => parseSearchDate(searchQuery, availableDates), [availableDates, searchQuery]);
-  const rideMatches = useMemo(() => rideSearchMatches(searchQuery, trips, currentTime), [currentTime, searchQuery, trips]);
+  const isSearchingDifferentDate = parsedSearchDate.date !== null && parsedSearchDate.date !== selectedDate;
+  const parsedSearchTime = useMemo(() => parseSearchTime(searchQuery, parsedSearchDate.ranges), [parsedSearchDate.ranges, searchQuery]);
+  const rideMatches = useMemo(
+    () => (isSearchingDifferentDate ? [] : rideSearchMatches(searchQuery, trips, currentTime, parsedSearchTime, parsedSearchDate.ranges)),
+    [currentTime, isSearchingDifferentDate, parsedSearchDate.ranges, parsedSearchTime, searchQuery, trips]
+  );
+  const hasInvalidSearchDate = parsedSearchDate.ranges.length > 0 && parsedSearchDate.date === null;
+  const canApplyTimeSearch = !hasInvalidSearchDate && (parsedSearchTime !== null || parsedSearchDate.date !== null);
+  const searchTokens = useMemo(() => stationSearchTokens(textOutsideRanges(searchQuery, parsedSearchDate.ranges)), [parsedSearchDate.ranges, searchQuery]);
+  const hasSearchQuery = searchQuery.trim().length > 0;
+  const starterSearches = useMemo(() => ["King St", "Queen St", "Union Station", "8:20am", selectedDate].filter(Boolean), [selectedDate]);
+  const commandResults = useMemo<CommandResult[]>(() => {
+    const results: CommandResult[] = [];
+    if (canApplyTimeSearch) {
+      results.push({ id: "jump-time", type: "time" });
+    }
+    rideMatches.forEach(({ trip }) => results.push({ id: `ride-${trip.tripId}`, type: "ride", trip }));
+    return results;
+  }, [canApplyTimeSearch, rideMatches]);
+  const timeResultTitle =
+    parsedSearchTime === null
+      ? `Open ${formatDateLabel(parsedSearchDate.date ?? selectedDate)}`
+      : `${formatDateLabel(parsedSearchDate.date ?? selectedDate)} · ${formatClockCompact(parsedSearchTime)}`;
+  const timeResultAction = isSearchingDifferentDate && searchTokens.length > 0 ? "Search this date" : parsedSearchDate.date && parsedSearchTime === null ? "Open date" : "Jump to time";
 
   const activeTrips = useMemo(
     () => trips.filter((trip) => trip.startSeconds <= currentTime && trip.endSeconds >= currentTime - TRIP_TRAIL_LENGTH_SECONDS),
@@ -683,12 +874,27 @@ export default function App() {
       data: selectedTrip ? [selectedTrip] : [],
       getPath: (trip) => trip.path,
       getColor: () => SELECTED_ROUTE_COLOR,
-      opacity: 1,
-      widthMinPixels: 4,
-      widthMaxPixels: 6,
+      opacity: 0.32,
+      widthMinPixels: 5,
+      widthMaxPixels: 7,
       capRounded: true,
       jointRounded: true,
       pickable: true
+    });
+    const selectedTripTrailLayer = new TripsLayer<FlowTrip>({
+      id: "bike-share-selected-trip-trail",
+      data: selectedTrip && activeTrips.some((trip) => trip.tripId === selectedTrip.tripId) ? [selectedTrip] : [],
+      getPath: (trip) => trip.path,
+      getTimestamps: (trip) => trip.timestamps,
+      getColor: tripColor,
+      opacity: 0.92,
+      widthMinPixels: 4,
+      widthMaxPixels: 7,
+      trailLength: TRIP_TRAIL_LENGTH_SECONDS,
+      currentTime,
+      capRounded: true,
+      jointRounded: true,
+      pickable: false
     });
     const arrowLayer = new IconLayer<TripMarker>({
       id: "bike-share-trip-arrows",
@@ -735,7 +941,7 @@ export default function App() {
       pickable: false
     });
 
-    deckRef.current.setProps({ layers: [layer, selectedTripLayer, arrowLayer, finishBurstLayer, selectedArrowLayer] });
+    deckRef.current.setProps({ layers: [layer, selectedTripLayer, selectedTripTrailLayer, arrowLayer, finishBurstLayer, selectedArrowLayer] });
   }, [activeTrips, currentTime, currentTripMarkers, finishPulses, selectedTrip, selectedTripMarker]);
 
   const loadTripsForSelection = useCallback(async () => {
@@ -751,6 +957,7 @@ export default function App() {
 
     setLoadState("loading");
     setErrorMessage("");
+    setTrips([]);
 
     const response = await dataClientRef.current.loadTrips({
       date: selectedDate,
@@ -798,20 +1005,29 @@ export default function App() {
     }
 
     const now = performance.now();
+    const startedTrips = trips
+      .filter((trip) => trip.startSeconds > previousTime && trip.startSeconds <= currentTime && trip.path.length)
+      .slice(0, 80);
     const completedTrips = trips
       .filter((trip) => trip.endSeconds > previousTime && trip.endSeconds <= currentTime && trip.path.length)
       .slice(0, 80);
 
-    if (!completedTrips.length) {
+    if (!startedTrips.length && !completedTrips.length) {
       return;
     }
 
     setFinishBursts((bursts) => [
       ...bursts.filter((burst) => now - burst.startedAt < FINISH_BURST_MS),
+      ...startedTrips.map((trip) => ({
+        id: `${trip.tripId}-unlock-${now}`,
+        position: trip.path[0],
+        color: BIKE_UNLOCKED_COLOR,
+        startedAt: now
+      })),
       ...completedTrips.map((trip) => ({
-        id: `${trip.tripId}-${now}`,
+        id: `${trip.tripId}-dock-${now}`,
         position: trip.path[trip.path.length - 1],
-        color: tripColor(trip),
+        color: BIKE_DOCKED_COLOR,
         startedAt: now
       }))
     ]);
@@ -868,6 +1084,10 @@ export default function App() {
   }, [isSearchOpen]);
 
   useEffect(() => {
+    setActiveCommandIndex(0);
+  }, [commandResults.length, searchQuery]);
+
+  useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
@@ -914,21 +1134,27 @@ export default function App() {
     setSelectedTrip(null);
     resetMapView(mapRef.current);
   }, []);
-  const openSearch = useCallback((mode: SearchMode = "time") => {
-    setSearchMode(mode);
+  const openSearch = useCallback(() => {
     setIsSearchOpen(true);
   }, []);
   const applyTimeSearch = useCallback(() => {
-    if (parsedSearchTime === null) {
+    if (!canApplyTimeSearch) {
       return;
     }
-    if (parsedSearchDate) {
-      setSelectedDate(parsedSearchDate);
+    const shouldKeepSearchOpen = isSearchingDifferentDate && searchTokens.length > 0;
+    if (parsedSearchDate.date) {
+      if (parsedSearchDate.date !== selectedDate) {
+        setTrips([]);
+        setSelectedTrip(null);
+      }
+      setSelectedDate(parsedSearchDate.date);
     }
-    setCurrentTime(parsedSearchTime);
+    if (parsedSearchTime !== null) {
+      setCurrentTime(parsedSearchTime);
+    }
     setIsPlaying(false);
-    setIsSearchOpen(false);
-  }, [parsedSearchDate, parsedSearchTime]);
+    setIsSearchOpen(shouldKeepSearchOpen);
+  }, [canApplyTimeSearch, isSearchingDifferentDate, parsedSearchDate, parsedSearchTime, searchTokens.length, selectedDate]);
   const selectSearchTrip = useCallback((trip: FlowTrip) => {
     setCurrentTime(trip.startSeconds);
     setIsPlaying(false);
@@ -939,6 +1165,19 @@ export default function App() {
     }
     setIsSearchOpen(false);
   }, []);
+  const applyCommandResult = useCallback(
+    (result: CommandResult | undefined) => {
+      if (!result) {
+        return;
+      }
+      if (result.type === "time") {
+        applyTimeSearch();
+        return;
+      }
+      selectSearchTrip(result.trip);
+    },
+    [applyTimeSearch, selectSearchTrip]
+  );
 
   return (
     <main className={selectedTrip ? "app-shell selected-mode" : "app-shell"}>
@@ -985,7 +1224,7 @@ export default function App() {
 
           {activeView === "map" && (
             <>
-              <button type="button" className="rail-control rail-search" onClick={() => openSearch("ride")}>
+              <button type="button" className="rail-control rail-search" onClick={openSearch}>
                 <span className="rail-main">
                   <Search size={18} />
                   Find ride
@@ -1120,24 +1359,32 @@ export default function App() {
         <AnalyticsPage manifest={manifest} filters={filters} dataClient={dataClientRef.current} />
       )}
 
+      {activeView === "map" && (
+        <aside className="map-legend" aria-label="Map color legend">
+          <div className="map-legend-item">
+            <span className="map-legend-arrow legend-e-bike" aria-hidden="true" />
+            <span>E-bike</span>
+          </div>
+          <div className="map-legend-item">
+            <span className="map-legend-arrow legend-classic-bike" aria-hidden="true" />
+            <span>Classic bike</span>
+          </div>
+          <div className="map-legend-item">
+            <span className="map-legend-arrow legend-bike-unlocked" aria-hidden="true" />
+            <span>Bike unlocked</span>
+          </div>
+          <div className="map-legend-item">
+            <span className="map-legend-arrow legend-bike-docked" aria-hidden="true" />
+            <span>Bike docked</span>
+          </div>
+        </aside>
+      )}
+
       {activeView === "map" && isSearchOpen && (
         <div className="command-backdrop" role="presentation" onMouseDown={() => setIsSearchOpen(false)}>
           <section className="command-panel" aria-label="Search rides and time" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="command-tabs">
-              <button
-                type="button"
-                className={searchMode === "time" ? "command-tab active" : "command-tab"}
-                onClick={() => setSearchMode("time")}
-              >
-                Search time/date
-              </button>
-              <button
-                type="button"
-                className={searchMode === "ride" ? "command-tab active" : "command-tab"}
-                onClick={() => setSearchMode("ride")}
-              >
-                Find ride
-              </button>
+            <div className="command-header">
+              <strong>Search</strong>
               <button type="button" className="command-close" aria-label="Close search" onClick={() => setIsSearchOpen(false)}>
                 <X size={20} aria-hidden="true" />
               </button>
@@ -1148,51 +1395,89 @@ export default function App() {
               <input
                 ref={searchInputRef}
                 value={searchQuery}
-                placeholder={searchMode === "time" ? "Try 8:20am or YYYY-MM-DD 4pm" : "Try start station, end station, or 8:05am"}
+                placeholder="Search rides, stations, dates, or times"
                 onChange={(event) => setSearchQuery(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === "Tab") {
+                  if (event.key === "ArrowDown") {
                     event.preventDefault();
-                    setSearchMode((value) => (value === "time" ? "ride" : "time"));
+                    setActiveCommandIndex((value) => Math.min(value + 1, Math.max(commandResults.length - 1, 0)));
+                    return;
                   }
-                  if (event.key === "Enter" && searchMode === "time") {
-                    applyTimeSearch();
+                  if (event.key === "ArrowUp") {
+                    event.preventDefault();
+                    setActiveCommandIndex((value) => Math.max(value - 1, 0));
+                    return;
                   }
-                  if (event.key === "Enter" && searchMode === "ride" && rideMatches[0]) {
-                    selectSearchTrip(rideMatches[0].trip);
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    applyCommandResult(commandResults[activeCommandIndex]);
                   }
                 }}
               />
             </label>
 
-            <div className="command-results">
-              {searchMode === "time" ? (
-                <>
-                  <button type="button" className="command-primary-result" disabled={parsedSearchTime === null} onClick={applyTimeSearch}>
-                    <span>Jump to time</span>
-                    <strong>
-                      {parsedSearchTime === null
-                        ? "Enter a time"
-                        : `${parsedSearchDate ?? selectedDate} · ${formatClockCompact(parsedSearchTime)}`}
-                    </strong>
+            {!hasSearchQuery ? (
+              <div className="command-starters" aria-label="Starter searches">
+                {starterSearches.map((value) => (
+                  <button key={value} type="button" className="command-chip" onClick={() => setSearchQuery(value)}>
+                    {value}
                   </button>
-                </>
-              ) : (
-                <>
-                  {rideMatches.length ? (
-                    rideMatches.map(({ trip }) => (
-                      <button key={trip.tripId} type="button" className="command-ride-result" onClick={() => selectSearchTrip(trip)}>
-                        <span>{formatClockCompact(trip.startSeconds)}</span>
-                        <strong>
-                          {trip.startStationName} → {trip.endStationName}
-                        </strong>
-                        <em>{formatBikeLabel(trip)} · {formatDuration(trip.durationSeconds)}</em>
-                      </button>
-                    ))
+                ))}
+              </div>
+            ) : (
+              <div className="command-understood" aria-label="Parsed search">
+                {parsedSearchDate.date && <span>Date: {formatDateLabel(parsedSearchDate.date)}</span>}
+                {parsedSearchTime !== null && <span>Time: {formatClockCompact(parsedSearchTime)}</span>}
+                {searchTokens.length > 0 && <span>Text: {searchTokens.slice(0, 4).join(" ")}</span>}
+              </div>
+            )}
+
+            <div className="command-results" role="listbox" aria-label="Search results">
+              {commandResults.length ? (
+                commandResults.map((result, index) =>
+                  result.type === "time" ? (
+                    <button
+                      key={result.id}
+                      type="button"
+                      className={index === activeCommandIndex ? "command-primary-result active" : "command-primary-result"}
+                      role="option"
+                      aria-selected={index === activeCommandIndex}
+                      onClick={applyTimeSearch}
+                      onMouseEnter={() => setActiveCommandIndex(index)}
+                    >
+                      <span>{timeResultAction}</span>
+                      <strong>{timeResultTitle}</strong>
+                    </button>
                   ) : (
-                    <p className="command-empty">Search the loaded day by station name or start time.</p>
-                  )}
-                </>
+                    <button
+                      key={result.id}
+                      type="button"
+                      className={index === activeCommandIndex ? "command-ride-result active" : "command-ride-result"}
+                      role="option"
+                      aria-selected={index === activeCommandIndex}
+                      onClick={() => selectSearchTrip(result.trip)}
+                      onMouseEnter={() => setActiveCommandIndex(index)}
+                    >
+                      <span>{formatClockCompact(result.trip.startSeconds)}</span>
+                      <strong>
+                        {result.trip.startStationName} → {result.trip.endStationName}
+                      </strong>
+                      <em>{formatBikeLabel(result.trip)} · {formatDuration(result.trip.durationSeconds)}</em>
+                    </button>
+                  )
+                )
+              ) : (
+                <p className="command-empty">
+                  {hasSearchQuery
+                    ? loadState === "loading"
+                      ? `Loading rides for ${formatDateLabel(selectedDate)}.`
+                      : hasInvalidSearchDate
+                        ? `No matching date in the loaded data for "${searchQuery}".`
+                        : isSearchingDifferentDate
+                          ? `Open ${formatDateLabel(parsedSearchDate.date ?? selectedDate)} to search rides for "${searchQuery}".`
+                      : `No rides found on ${formatDateLabel(selectedDate)} for "${searchQuery}".`
+                    : `Search ${formatDateLabel(selectedDate)} by station, date, or time.`}
+                </p>
               )}
             </div>
           </section>
