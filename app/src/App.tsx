@@ -68,6 +68,7 @@ const FINISH_BURST_MS = 1100;
 const MAX_RIDE_SEARCH_RESULTS = 40;
 const DEFAULT_SELECTED_DATE = "2026-01-01";
 const DEFAULT_START_SECONDS = 0;
+const START_PLAYBACK_DELAY_MS = 2000;
 const SELECTED_ROUTE_COLOR: [number, number, number, number] = [255, 255, 255, 245];
 const E_BIKE_COLOR: [number, number, number] = [98, 202, 255];
 const CLASSIC_BIKE_COLOR: [number, number, number] = [180, 128, 255];
@@ -545,6 +546,8 @@ export default function App() {
   const animationRef = useRef<number | null>(null);
   const lastFrameRef = useRef<number | null>(null);
   const previousTimeRef = useRef(DEFAULT_START_SECONDS);
+  const hasAutoStartedRef = useRef(false);
+  const hasManualPlaybackChangeRef = useRef(false);
 
   const [manifest, setManifest] = useState<PublishedManifest | null>(null);
   const [selectedDate, setSelectedDate] = useState(DEFAULT_SELECTED_DATE);
@@ -607,6 +610,11 @@ export default function App() {
       ? `Open ${formatDateLabel(parsedSearchDate.date ?? selectedDate)}`
       : `${formatDateLabel(parsedSearchDate.date ?? selectedDate)} · ${formatClockCompact(parsedSearchTime)}`;
   const timeResultAction = isSearchingDifferentDate && searchTokens.length > 0 ? "Search this date" : parsedSearchDate.date && parsedSearchTime === null ? "Open date" : "Jump to time";
+
+  const togglePlayback = useCallback(() => {
+    hasManualPlaybackChangeRef.current = true;
+    setIsPlaying((value) => !value);
+  }, []);
 
   const activeTrips = useMemo(
     () => trips.filter((trip) => trip.startSeconds <= currentTime && trip.endSeconds >= currentTime - TRIP_TRAIL_LENGTH_SECONDS),
@@ -983,6 +991,21 @@ export default function App() {
   }, [loadTripsForSelection]);
 
   useEffect(() => {
+    if (hasAutoStartedRef.current || hasManualPlaybackChangeRef.current || activeView !== "map" || loadState !== "ready") {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      if (!hasManualPlaybackChangeRef.current) {
+        hasAutoStartedRef.current = true;
+        setIsPlaying(true);
+      }
+    }, START_PLAYBACK_DELAY_MS);
+
+    return () => window.clearTimeout(timeout);
+  }, [activeView, loadState]);
+
+  useEffect(() => {
     setSelectedTrip((trip) => {
       if (!trip) {
         return null;
@@ -1105,7 +1128,7 @@ export default function App() {
       }
       if (event.code === "Space") {
         event.preventDefault();
-        setIsPlaying((value) => !value);
+        togglePlayback();
       }
       if (event.key.toLowerCase() === "r") {
         setCurrentTime(0);
@@ -1125,7 +1148,7 @@ export default function App() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isSearchOpen]);
+  }, [isSearchOpen, togglePlayback]);
 
   const setUserType = (userType: UserType) => setFilters((value) => ({ ...value, userTypes: toggleValue(value.userTypes, userType) }));
   const setBikeCategory = (bikeCategory: BikeCategory) =>
@@ -1245,7 +1268,7 @@ export default function App() {
                 </span>
               </label>
 
-              <button type="button" className="rail-control rail-control-primary" onClick={() => setIsPlaying((value) => !value)}>
+              <button type="button" className="rail-control rail-control-primary" onClick={togglePlayback}>
                 <span className="rail-main">
                   {isPlaying ? <Pause size={18} /> : <Play size={18} />}
                   {isPlaying ? "Pause" : "Play"}
